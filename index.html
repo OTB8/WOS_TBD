@@ -131,15 +131,26 @@
     return r.json();
   }
 
-  async function apiPost(action, payload){
-    const {url,key} = cfg();
-    const r = await fetch(url, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ key, action, payload })
+  async function apiPost(action, payload)
+  {
+    const {url, key} = cfg();
+  
+    const form = new URLSearchParams();
+    form.set("key", key);
+    form.set("action", action);
+    form.set("payload", JSON.stringify(payload));
+  
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body: form.toString()
     });
-    return r.json();
+  
+    // can't read response in no-cors mode, so reload to confirm
+    return { ok:true };
   }
+
 
   function clearForm(){
     FIELDS.forEach(f => {
@@ -230,3 +241,4 @@
 
 </body>
 </html>
+
