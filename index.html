@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alliance Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0; align-items: center; }
+    input, select, button { padding: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f5f5f5; text-align:left; }
+    .card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
+    .danger { background:#ffe8e8; }
+    .small { font-size: 12px; color:#555; }
+  </style>
+</head>
+<body>
+
+<h2>Alliance Player Tracker (v1)</h2>
+<div class="small">Search by PID, click row to load, add/update/delete. Data saves to Google Sheets.</div>
+
+<div class="card">
+  <div class="row">
+    <label>API URL:
+      <input id="apiUrl" style="min-width:420px" placeholder="Paste Web App URL" />
+    </label>
+    <label>API Key:
+      <input id="apiKey" placeholder="Your secret key" />
+    </label>
+    <button onclick="saveConfig()">Save</button>
+    <button onclick="loadAll()">Load Players</button>
+    <span id="msg" class="small"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Search / Edit</h3>
+  <div class="row">
+    <input id="searchPid" placeholder="Search PID" />
+    <button onclick="searchByPID()">Search</button>
+    <button onclick="clearForm()">Clear</button>
+    <button class="danger" onclick="deletePID()">Delete PID</button>
+  </div>
+
+  <div class="row">
+    <input id="PID" placeholder="PID (required)" />
+    <input id="Name" placeholder="Name" />
+    <input id="City_FC_Level" placeholder="City_FC_Level" />
+    <input id="Game_Power" placeholder="Game_Power" />
+    <input id="Foundry_Power" placeholder="Foundry_Power" />
+  </div>
+
+  <div class="row">
+    <label>Helios_Infantry
+      <select id="Helios_Infantry">
+        <option value=""></option><option>Yes</option><option>No</option>
+      </select>
+    </label>
+    <input id="Infantry_FC_Level" placeholder="Infantry_FC_Level" />
+
+    <label>Helios_Marksmen
+      <select id="Helios_Marksmen">
+        <option value=""></option><option>Yes</option><option>No</option>
+      </select>
+    </label>
+    <input id="Marksmen_FC_Level" placeholder="Marksmen_FC_Level" />
+
+    <label>Helios_Lancer
+      <select id="Helios_Lancer">
+        <option value=""></option><option>Yes</option><option>No</option>
+      </select>
+    </label>
+    <input id="Lancer_FC_Level" placeholder="Lancer_FC_Level" />
+  </div>
+
+  <div class="row">
+    <button onclick="upsert()">Add / Update</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>All Players</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>PID</th><th>Game Power</th><th>City FC</th>
+        <th>Foundry</th><th>Inf</th><th>Inf FC</th><th>Mark</th><th>Mark FC</th><th>Lan</th><th>Lan FC</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+  // These MUST match your sheet headers exactly:
+  const FIELDS = [
+    "Name","PID","City_FC_Level","Game_Power","Foundry_Power",
+    "Helios_Infantry","Infantry_FC_Level",
+    "Helios_Marksmen","Marksmen_FC_Level",
+    "Helios_Lancer","Lancer_FC_Level"
+  ];
+
+  function setMsg(t){ document.getElementById("msg").textContent = t; }
+
+  function saveConfig(){
+    localStorage.setItem("apiUrl", document.getElementById("apiUrl").value.trim());
+    localStorage.setItem("apiKey", document.getElementById("apiKey").value.trim());
+    setMsg("Saved config.");
+  }
+
+  function loadConfig(){
+    document.getElementById("apiUrl").value = localStorage.getItem("apiUrl") || "";
+    document.getElementById("apiKey").value = localStorage.getItem("apiKey") || "";
+  }
+
+  function cfg(){
+    return {
+      url: document.getElementById("apiUrl").value.trim(),
+      key: document.getElementById("apiKey").value.trim(),
+    };
+  }
+
+  async function apiGet(params={}){
+    const {url,key} = cfg();
+    const u = new URL(url);
+    u.searchParams.set("key", key);
+    Object.entries(params).forEach(([k,v]) => u.searchParams.set(k, v));
+    const r = await fetch(u.toString());
+    return r.json();
+  }
+
+  async function apiPost(action, payload){
+    const {url,key} = cfg();
+    const r = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ key, action, payload })
+    });
+    return r.json();
+  }
+
+  function clearForm(){
+    FIELDS.forEach(f => {
+      const el = document.getElementById(f);
+      if (el) el.value = "";
+    });
+    setMsg("");
+  }
+
+  function fillForm(m){
+    FIELDS.forEach(f => {
+      const el = document.getElementById(f);
+      if (el) el.value = (m[f] ?? "");
+    });
+  }
+
+  function readForm(){
+    const obj = {};
+    FIELDS.forEach(f => obj[f] = document.getElementById(f).value);
+    // force PID trim
+    obj["PID"] = (obj["PID"] || "").toString().trim();
+    return obj;
+  }
+
+  function renderTable(list){
+    const tb = document.getElementById("tbody");
+    tb.innerHTML = "";
+    list.forEach(m => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${m.Name ?? ""}</td>
+        <td>${m.PID ?? ""}</td>
+        <td>${m.Game_Power ?? ""}</td>
+        <td>${m.City_FC_Level ?? ""}</td>
+        <td>${m.Foundry_Power ?? ""}</td>
+        <td>${m.Helios_Infantry ?? ""}</td>
+        <td>${m.Infantry_FC_Level ?? ""}</td>
+        <td>${m.Helios_Marksmen ?? ""}</td>
+        <td>${m.Marksmen_FC_Level ?? ""}</td>
+        <td>${m.Helios_Lancer ?? ""}</td>
+        <td>${m.Lancer_FC_Level ?? ""}</td>
+      `;
+      tr.style.cursor = "pointer";
+      tr.onclick = () => fillForm(m);
+      tb.appendChild(tr);
+    });
+  }
+
+  async function loadAll(){
+    setMsg("Loading...");
+    const res = await apiGet();
+    if (!res.ok) return setMsg(res.error || "Error loading");
+    renderTable(res.members || []);
+    setMsg(`Loaded ${res.members.length} players.`);
+  }
+
+  async function searchByPID(){
+    const pid = document.getElementById("searchPid").value.trim();
+    if (!pid) return setMsg("Enter a PID.");
+    const res = await apiGet({ pid });
+    if (!res.ok) return setMsg(res.error || "Not found");
+    fillForm(res.member);
+    setMsg("Loaded member.");
+  }
+
+  async function upsert(){
+    const data = readForm();
+    if (!data.PID) return setMsg("PID is required.");
+    const res = await apiPost("upsert", data);
+    if (!res.ok) return setMsg(res.error || "Save failed");
+    setMsg(res.message || "Saved.");
+    await loadAll();
+  }
+
+  async function deletePID(){
+    const pid = (document.getElementById("PID").value || document.getElementById("searchPid").value).trim();
+    if (!pid) return setMsg("Enter/load a PID first.");
+    if (!confirm(`Delete PID ${pid}?`)) return;
+    const res = await apiPost("delete", { PID: pid });
+    if (!res.ok) return setMsg(res.error || "Delete failed");
+    clearForm();
+    setMsg("Deleted.");
+    await loadAll();
+  }
+
+  loadConfig();
+</script>
+
+</body>
+</html>
