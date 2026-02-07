@@ -5,7 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Alliance Tracker</title>
   <style>
-   body
+    :root
+    {
+      --bg-deep:#071427;      /* dark polar night */
+      --bg-mid:#0d1f3a;
+      --ice:#4fd1ff;
+      --ice-soft:#b9ecff;
+      --glow:#4fd1ff44;
+      --frost: rgba(0,0,0,.45);
+      --border:rgba(255,255,255,.14);
+      --text:#eaf6ff;
+      --muted:#9fb6d4;
+      --danger:#ff5c5c;
+    }
+    body
    {
       font-family: Arial, sans-serif;
       margin: 20px;
@@ -129,7 +142,7 @@
 
     .banner-center
     {
-      background-image:url("wos-banner.jpg");
+      background-image:url("images/wos-banner.jpg");
       background-size:contain;
       background-repeat:no-repeat;
       background-position:center;
@@ -143,20 +156,6 @@
       color:#4fd1ff;
       text-shadow:0 0 20px rgba(79,209,255,.6);
       user-select:none;
-    }
-
-    :root
-    {
-      --bg-deep:#071427;      /* dark polar night */
-      --bg-mid:#0d1f3a;
-      --ice:#4fd1ff;
-      --ice-soft:#b9ecff;
-      --glow:#4fd1ff44;
-      --frost: rgba(0,0,0,.45);
-      --border:rgba(255,255,255,.14);
-      --text:#eaf6ff;
-      --muted:#9fb6d4;
-      --danger:#ff5c5c;
     }
   </style>
 </head>
@@ -372,38 +371,44 @@
     };
   }
 
- async function apiGet(params = {}) 
- {
-    try 
-    {
-      const { url, key } = cfg();
-      if (!url) return { ok: false, error: "Missing API URL" };
-
-      const u = new URL(url);
-      u.searchParams.set("key", key);
-      Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-
-      const r = await fetch(u.toString());
-      return await r.json();
-    } 
-    catch (e) 
-    {
-      return { ok: false, error: e.message };
-    }
+   async function apiGet(params = {}) 
+   {
+      try 
+      {
+        const { url, key } = cfg();
+        if (!url) return { ok: false, error: "Missing API URL" };
+  
+        const u = new URL(url);
+        u.searchParams.set("key", key);
+        Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  
+        const r = await fetch(u.toString());
+        return await r.json();
+      } 
+      catch (e) 
+      {
+        return { ok: false, error: e.message };
+      }
   }
 
   async function apiPost(action, payload) 
   {
-   const {url,key} = cfg();
-
-    const u = new URL(url);
-    u.searchParams.set("key", key);
-    u.searchParams.set("action", action);
-    u.searchParams.set("payload", JSON.stringify(payload));
-
-    const r = await fetch(u.toString());
-    return r.json();
+    try {
+      const { url, key } = cfg();
+      if (!url) return { ok: false, error: "Missing API URL" };
+  
+      const u = new URL(url);
+      u.searchParams.set("key", key);
+      u.searchParams.set("action", action);
+      u.searchParams.set("payload", JSON.stringify(payload));
+  
+      const r = await fetch(u.toString());
+      return await r.json();
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
   }
+
 
   function clearForm(){
     FIELDS.forEach(f => {
@@ -531,7 +536,7 @@
 
  function resetToSheetOrder() 
  {
-    loadAll()
+    loadAll();
     setMsg("✅ Reset to Google Sheet order.");
   }
 
@@ -544,4 +549,5 @@
 
 </body>
 </html>
+
 
