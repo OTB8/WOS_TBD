@@ -32,6 +32,7 @@
     <button onclick="saveConfig()">Save</button>
     <button onclick="loadAll()">Load Players</button>
     <span id="msg" class="small"></span>
+    <pre id="debug" class="small" style="white-space:pre-wrap; background:#111; color:#0f0; padding:10px; border-radius:8px; max-height:220px; overflow:auto; margin-top:10px;"></pre>
   </div>
 </div>
 
@@ -104,6 +105,12 @@
 
   function setMsg(t){ document.getElementById("msg").textContent = t; }
 
+  function setDebug(obj)
+  {
+    document.getElementById("debug").textContent =
+      typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  }
+
   function saveConfig(){
     localStorage.setItem("apiUrl", document.getElementById("apiUrl").value.trim());
     localStorage.setItem("apiKey", document.getElementById("apiKey").value.trim());
@@ -131,26 +138,18 @@
     return r.json();
   }
 
-  async function apiPost(action, payload)
+  async function apiPost(action, payload) 
   {
-    const {url, key} = cfg();
-  
-    const form = new URLSearchParams();
-    form.set("key", key);
-    form.set("action", action);
-    form.set("payload", JSON.stringify(payload));
-  
-    await fetch(url, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-      body: form.toString()
-    });
-  
-    // can't read response in no-cors mode, so reload to confirm
-    return { ok:true };
-  }
+   const {url,key} = cfg();
 
+    const u = new URL(url);
+    u.searchParams.set("key", key);
+    u.searchParams.set("action", action);
+    u.searchParams.set("payload", JSON.stringify(payload));
+
+    const r = await fetch(u.toString());
+    return r.json();
+  }
 
   function clearForm(){
     FIELDS.forEach(f => {
@@ -216,29 +215,55 @@
     setMsg("Loaded member.");
   }
 
-  async function upsert(){
-    const data = readForm();
-    if (!data.PID) return setMsg("PID is required.");
+ async function upsert(){
+  const data = readForm();
+  if (!data.PID) return setMsg("PID is required.");
+
+  setMsg("Saving...");
+  try{
     const res = await apiPost("upsert", data);
-    if (!res.ok) return setMsg(res.error || "Save failed");
-    setMsg(res.message || "Saved.");
+
+    if (!res.ok) {
+      setMsg("Save failed: " + (res.error || "Unknown error"));
+      return;
+    }
+
+    setMsg(`✅ ${res.message || "Saved"} (PID ${data.PID})`);
     await loadAll();
+  } catch (err){
+    setMsg("Save failed (network): " + err.message);
+    setDebug(String(err));
   }
+}
+
 
   async function deletePID(){
-    const pid = (document.getElementById("PID").value || document.getElementById("searchPid").value).trim();
-    if (!pid) return setMsg("Enter/load a PID first.");
-    if (!confirm(`Delete PID ${pid}?`)) return;
+  const pid = (document.getElementById("PID").value || document.getElementById("searchPid").value).trim();
+  if (!pid) return setMsg("Enter/load a PID first.");
+  if (!confirm(`Delete PID ${pid}?`)) return;
+
+  setMsg("Deleting...");
+  try{
     const res = await apiPost("delete", { PID: pid });
-    if (!res.ok) return setMsg(res.error || "Delete failed");
+
+    if (!res.ok) {
+      setMsg("Delete failed: " + (res.error || "Unknown error"));
+      return;
+    }
+
     clearForm();
-    setMsg("Deleted.");
+    setMsg(`✅ Deleted (PID ${pid})`);
     await loadAll();
+  } catch (err){
+    setMsg("Delete failed (network): " + err.message);
+    setDebug(String(err));
   }
+}
 
   loadConfig();
 </script>
 
 </body>
 </html>
+
 
