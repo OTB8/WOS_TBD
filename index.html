@@ -5,18 +5,168 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Alliance Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
+   body
+   {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      color: var(--text);
+
+      background:
+        radial-gradient(1000px 600px at 15% 0%, var(--glow), transparent 60%),
+        radial-gradient(800px 500px at 85% 10%, #4fd1ff22, transparent 55%),
+        linear-gradient(var(--bg-mid), var(--bg-deep));
+    }
+
     .row { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0; align-items: center; }
-    input, select, button { padding: 8px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f5f5f5; text-align:left; }
-    .card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
-    .danger { background:#ffe8e8; }
-    .small { font-size: 12px; color:#555; }
+    input, select
+    {
+      padding:8px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+    }
+
+    button
+    {
+      padding: 8px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      color:white;
+
+      background: linear-gradient(
+        180deg,
+        rgba(79,209,255,.35),
+        rgba(79,209,255,.12)
+      );
+
+      cursor:pointer;
+    }
+
+    button:hover
+    {
+      filter:brightness(1.15);
+      box-shadow:0 0 10px var(--glow);
+    }
+
+    table
+    {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    th, td
+    {
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 10px;
+      color: #eaf6ff;
+      text-align: center;   /* center everything by default */
+    }
+
+    td:first-child,
+    th:first-child
+    {
+      text-align: left;     /* Name column left aligned */
+    }
+    
+    th
+    {
+      background: rgba(255,255,255,.08);
+      color: #b9ecff;
+      font-weight: 800;
+    }
+
+    tbody tr:hover
+    {
+      background: rgba(79,209,255,.08);
+    }
+
+    .card
+    {
+      background: var(--frost);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      margin-top:12px;
+      backdrop-filter: blur(8px);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .danger
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(255,92,92,.45),
+        rgba(255,92,92,.15)
+      );
+    }
+
+    .small
+    {
+      font-size:12px;
+      color:#9fb6d4;
+    }
+
+    .banner
+    {
+      height:200px;
+      display:flex;
+      border-radius:18px;
+      overflow:hidden;
+      margin-bottom:16px;
+      border:1px solid rgba(255,255,255,.15);
+      box-shadow:0 12px 35px rgba(0,0,0,.35);
+      background:#071427;
+    }
+
+    .banner > div
+    {
+      flex:1;                 /* 👈 equal 3 columns */
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .banner-center
+    {
+      background-image:url("wos-banner.jpg");
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+    }
+
+    .banner-side
+    {
+      font-weight:900;
+      font-size:88px;
+      letter-spacing:6px;
+      color:#4fd1ff;
+      text-shadow:0 0 20px rgba(79,209,255,.6);
+      user-select:none;
+    }
+
+    :root
+    {
+      --bg-deep:#071427;      /* dark polar night */
+      --bg-mid:#0d1f3a;
+      --ice:#4fd1ff;
+      --ice-soft:#b9ecff;
+      --glow:#4fd1ff44;
+      --frost: rgba(0,0,0,.45);
+      --border:rgba(255,255,255,.14);
+      --text:#eaf6ff;
+      --muted:#9fb6d4;
+      --danger:#ff5c5c;
+    }
   </style>
 </head>
 <body>
+
+<div class="banner">
+  <div class="banner-side left">TBD</div>
+  <div class="banner-center"></div>
+  <div class="banner-side right">657</div>
+</div>
 
 <h2>Alliance Player Tracker (v1)</h2>
 <div class="small">Search by PID, click row to load, add/update/delete. Data saves to Google Sheets.</div>
@@ -83,11 +233,23 @@
 
 <div class="card">
   <h3>All Players</h3>
+  <div class="row">
+    <button onclick="resetToSheetOrder()">Reset to Sheet Order</button>
+  </div>
   <table>
     <thead>
       <tr>
-        <th>Name</th><th>PID</th><th>Game Power</th><th>City FC</th>
-        <th>Foundry</th><th>Inf</th><th>Inf FC</th><th>Mark</th><th>Mark FC</th><th>Lan</th><th>Lan FC</th>
+        <th data-sort="Name">Name</th>
+        <th data-sort="PID">PID</th>
+        <th data-sort="Game_Power">Game Power</th>
+        <th data-sort="City_FC_Level">City FC</th>
+        <th data-sort="Foundry_Power">Foundry</th>
+        <th data-sort="Helios_Infantry">Inf</th>
+        <th data-sort="Infantry_FC_Level">Inf FC</th>
+        <th data-sort="Helios_Marksmen">Mark</th>
+        <th data-sort="Marksmen_FC_Level">Mark FC</th>
+        <th data-sort="Helios_Lancer">Lan</th>
+        <th data-sort="Lancer_FC_Level">Lan FC</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -111,13 +273,94 @@
       typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
+  let currentList = [];
+  let sheetDefaultOrder = [];
+
+  let sortState = { key: null, dir: 1 };
+
+  function parseNumberLike(v)
+  {
+    if (v === null || v === undefined) return NaN;
+    const s = String(v).replace(/,/g, "").trim();
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function normPid(v)
+  {
+    return String(v ?? "").replace(/[\s,]/g, "").trim();
+  }
+
+  function compareValues(a, b, key)
+  {
+    const numericKeys = new Set([
+      "Game_Power","Foundry_Power",
+      "City_FC_Level","Infantry_FC_Level",
+      "Marksmen_FC_Level","Lancer_FC_Level"
+    ]);
+
+    if (numericKeys.has(key))
+    {
+      const an = parseNumberLike(a[key]);
+      const bn = parseNumberLike(b[key]);
+
+      const aBad = !Number.isFinite(an);
+      const bBad = !Number.isFinite(bn);
+
+      if (aBad && bBad) return 0;
+      if (aBad) return 1;   // blanks go to bottom
+      if (bBad) return -1;
+
+      return an - bn;
+    }
+
+    const as = (a[key] ?? "").toString().toLowerCase();
+    const bs = (b[key] ?? "").toString().toLowerCase();
+    return as.localeCompare(bs);
+}
+
+
+  function sortBy(key) 
+  {
+    if (sortState.key === key) sortState.dir *= -1;
+    else { sortState.key = key; sortState.dir = 1; }
+
+    currentList = [...currentList].sort((a,b) =>
+      sortState.dir * compareValues(a,b,key)
+    );
+
+    renderTable(currentList);
+    updateHeaderArrows();
+  }
+
+  function updateHeaderArrows()
+  {
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      const k = th.dataset.sort;
+      const base = th.dataset.base || th.textContent.replace(/[▲▼]/g,"").trim();
+      th.dataset.base = base;
+      th.textContent = k === sortState.key
+        ? base + (sortState.dir === 1 ? " ▲" : " ▼")
+        : base;
+    });
+  }
+
+  function initSorting()
+  {
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      th.style.cursor = "pointer";
+      th.addEventListener("click", () => sortBy(th.dataset.sort));
+    });
+  }
+
   function saveConfig(){
     localStorage.setItem("apiUrl", document.getElementById("apiUrl").value.trim());
     localStorage.setItem("apiKey", document.getElementById("apiKey").value.trim());
     setMsg("Saved config.");
   }
 
-  function loadConfig(){
+  function loadConfig()
+  {
     document.getElementById("apiUrl").value = localStorage.getItem("apiUrl") || "";
     document.getElementById("apiKey").value = localStorage.getItem("apiKey") || "";
   }
@@ -129,13 +372,24 @@
     };
   }
 
-  async function apiGet(params={}){
-    const {url,key} = cfg();
-    const u = new URL(url);
-    u.searchParams.set("key", key);
-    Object.entries(params).forEach(([k,v]) => u.searchParams.set(k, v));
-    const r = await fetch(u.toString());
-    return r.json();
+ async function apiGet(params = {}) 
+ {
+    try 
+    {
+      const { url, key } = cfg();
+      if (!url) return { ok: false, error: "Missing API URL" };
+
+      const u = new URL(url);
+      u.searchParams.set("key", key);
+      Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+
+      const r = await fetch(u.toString());
+      return await r.json();
+    } 
+    catch (e) 
+    {
+      return { ok: false, error: e.message };
+    }
   }
 
   async function apiPost(action, payload) 
@@ -198,13 +452,27 @@
     });
   }
 
-  async function loadAll(){
-    setMsg("Loading...");
-    const res = await apiGet();
-    if (!res.ok) return setMsg(res.error || "Error loading");
-    renderTable(res.members || []);
-    setMsg(`Loaded ${res.members.length} players.`);
-  }
+ async function loadAll() 
+ {
+  setMsg("Loading...");
+  const res = await apiGet();
+  if (!res.ok) return setMsg(res.error || "Error loading");
+
+  // Always treat the sheet response as source of truth
+  sheetDefaultOrder = res.members || [];
+  currentList = [...sheetDefaultOrder];
+
+  // Render exactly in sheet order on load
+  renderTable(currentList);
+
+  // Clear any previous column sort UI
+  sortState.key = null;
+  sortState.dir = 1;
+  updateHeaderArrows();
+
+  setMsg(`Loaded ${currentList.length} players.`);
+}
+
 
   async function searchByPID(){
     const pid = document.getElementById("searchPid").value.trim();
@@ -260,10 +528,20 @@
   }
 }
 
+
+ function resetToSheetOrder() 
+ {
+    loadAll()
+    setMsg("✅ Reset to Google Sheet order.");
+  }
+
+
+
   loadConfig();
+  initSorting();
+  loadAll();
 </script>
 
 </body>
 </html>
-
 
