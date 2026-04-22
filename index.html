@@ -95,6 +95,46 @@
       background: rgba(79,209,255,.08);
     }
 
+    /* Checkbox column */
+    td.sel-col, th.sel-col
+    {
+      width: 34px;
+      text-align: center;
+      padding: 6px;
+    }
+
+    tbody tr.selected
+    {
+      background: rgba(79,209,255,.18);
+    }
+
+    input[type="checkbox"]
+    {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #4fd1ff;
+    }
+
+    .btn-group
+    {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .spacer { flex: 1; }
+
+    .warn
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(255,180,80,.45),
+        rgba(255,180,80,.15)
+      );
+    }
+
     .card
     {
       background: var(--frost);
@@ -112,6 +152,136 @@
         rgba(255,92,92,.45),
         rgba(255,92,92,.15)
       );
+    }
+
+    /* Profile card */
+    .profile-grid
+    {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px 16px;
+      margin-top: 10px;
+    }
+    .profile-field
+    {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .profile-label
+    {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .profile-value
+    {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .profile-sub-title
+    {
+      margin: 14px 0 6px;
+      color: var(--ice-soft);
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+    .profile-empty
+    {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 13px;
+    }
+    .profile-table
+    {
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    .profile-table th, .profile-table td
+    {
+      padding: 6px 8px;
+    }
+    .status-pill
+    {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-attended  { background: rgba(80,220,120,.25); color:#bff5c7; }
+    .status-missed    { background: rgba(255,92,92,.25); color:#ffc8c8; }
+    .status-notreg    { background: rgba(255,180,80,.22); color:#ffe2b0; }
+    .status-notactive { background: rgba(159,182,212,.22); color:#c7d7ea; }
+    .status-other     { background: rgba(79,209,255,.22); color:#c5ecff; }
+
+    .yes-badge { color:#bff5c7; font-weight:700; }
+    .no-badge  { color:#ffc8c8; font-weight:700; }
+    .na-badge  { color:var(--muted); font-style:italic; }
+
+    /* Profile header (avatar + name block) */
+    .profile-header
+    {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .avatar
+    {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(79,209,255,.45);
+      box-shadow: 0 0 14px rgba(79,209,255,.25);
+      background: rgba(0,0,0,.4);
+    }
+    .avatar.avatar-placeholder
+    {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      color: var(--ice-soft);
+    }
+    .profile-header-text h4
+    {
+      margin: 0;
+      font-size: 22px;
+      color: var(--text);
+    }
+    .profile-header-text .small
+    {
+      margin-top: 2px;
+    }
+
+    /* Smart save button modes */
+    button.mode-add
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(80,220,120,.55),
+        rgba(80,220,120,.18)
+      );
+      border-color: rgba(120,240,160,.45);
+      font-weight: 700;
+    }
+
+    button.mode-update
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(79,209,255,.65),
+        rgba(79,209,255,.20)
+      );
+      border-color: rgba(180,235,255,.55);
+      font-weight: 700;
     }
 
     .small
@@ -171,6 +341,19 @@
 <div class="small">Search by PID, click row to load, add/update/delete. Data saves to Google Sheets.</div>
 
 <div class="card">
+  <h3>Player Profile</h3>
+  <div class="row">
+    <input id="profileSearch" placeholder="Search by PID or Name" style="min-width:280px" />
+    <button onclick="loadProfile()">View Profile</button>
+    <button onclick="clearProfile()">Clear</button>
+    <button onclick="loadProfileIntoEditor()" title="Load this player into the Search / Edit form below">Edit this player</button>
+    <span id="profileMsg" class="small"></span>
+  </div>
+  <div id="profileSuggestions" class="small" style="margin-top:6px;"></div>
+  <div id="profileBody" style="margin-top:10px;"></div>
+</div>
+
+<div class="card">
   <div class="row">
     <label>API URL:
       <input id="apiUrl" style="min-width:420px" placeholder="Paste Web App URL" />
@@ -186,10 +369,8 @@
 </div>
 
 <div class="card">
-  <h3>Search / Edit</h3>
+  <h3>Edit Player</h3>
   <div class="row">
-    <input id="searchPid" placeholder="Search PID" />
-    <button onclick="searchByPID()">Search</button>
     <button onclick="clearForm()">Clear</button>
     <button class="danger" onclick="deletePID()">Delete PID</button>
   </div>
@@ -200,6 +381,45 @@
     <input id="City_FC_Level" placeholder="City_FC_Level" />
     <input id="Game_Power" placeholder="Game_Power" />
     <input id="Foundry_Power" placeholder="Foundry_Power" />
+  </div>
+
+  <div class="row">
+    <label>Gender
+      <select id="Gender">
+        <option value=""></option>
+        <option>Male</option>
+        <option>Female</option>
+      </select>
+    </label>
+    <input id="Location" placeholder="Location (state, country, anywhere)" style="min-width:260px" />
+    <label>JoinDate
+      <input id="JoinDate" type="date" title="Leave blank to auto-stamp today on Add" />
+    </label>
+    <span class="small">← Leave blank on Add to auto-stamp today</span>
+  </div>
+
+  <div class="row">
+    <label>Avatar
+      <select id="Avatar">
+        <option value="">(auto by gender)</option>
+        <optgroup label="Female">
+          <option value="Blanchette.jpg">Blanchette</option>
+          <option value="Hervor.jpg">Hervor</option>
+          <option value="Norah.jpg">Norah</option>
+          <option value="Eleonora.jpg">Eleonora</option>
+        </optgroup>
+        <optgroup label="Male">
+          <option value="Kerol.jpg">Kerol</option>
+          <option value="Greg.jpg">Greg</option>
+          <option value="Jeronimo.jpg">Jeronimo</option>
+          <option value="Wu-Ming.jpg">Wu-Ming</option>
+        </optgroup>
+      </select>
+    </label>
+    <div id="avatarPreview" style="display:flex;align-items:center;gap:8px;">
+      <img id="avatarPreviewImg" class="avatar" style="width:48px;height:48px;" alt="" onerror="this.style.display='none'"/>
+      <span class="small" id="avatarPreviewLabel"></span>
+    </div>
   </div>
 
   <div class="row">
@@ -226,29 +446,29 @@
   </div>
 
   <div class="row">
-    <button onclick="upsert()">Add / Update</button>
+    <button id="saveBtn" onclick="upsert()">Add / Update</button>
+    <span id="saveMode" class="small"></span>
   </div>
 </div>
 
 <div class="card">
   <h3>All Players</h3>
-  <div class="row">
+  <div class="row btn-group">
     <button onclick="resetToSheetOrder()">Reset to Sheet Order</button>
+    <span id="selCount" class="small">0 selected</span>
+    <div class="spacer"></div>
+    <button class="warn" onclick="archiveSelected()">Archive Selected</button>
+    <button class="danger" onclick="deleteSelected()">Delete Selected</button>
   </div>
   <table>
     <thead>
       <tr>
+        <th class="sel-col"><input type="checkbox" id="selAll" onclick="toggleSelectAll(this)" title="Select all" /></th>
         <th data-sort="Name">Name</th>
         <th data-sort="PID">PID</th>
         <th data-sort="Game_Power">Game Power</th>
         <th data-sort="City_FC_Level">City FC</th>
         <th data-sort="Foundry_Power">Foundry</th>
-        <th data-sort="Helios_Infantry">Inf</th>
-        <th data-sort="Infantry_FC_Level">Inf FC</th>
-        <th data-sort="Helios_Marksmen">Mark</th>
-        <th data-sort="Marksmen_FC_Level">Mark FC</th>
-        <th data-sort="Helios_Lancer">Lan</th>
-        <th data-sort="Lancer_FC_Level">Lan FC</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -261,8 +481,56 @@
     "Name","PID","City_FC_Level","Game_Power","Foundry_Power",
     "Helios_Infantry","Infantry_FC_Level",
     "Helios_Marksmen","Marksmen_FC_Level",
-    "Helios_Lancer","Lancer_FC_Level"
+    "Helios_Lancer","Lancer_FC_Level",
+    "Gender","Location","JoinDate","Avatar"
   ];
+
+  // Avatar gallery — filenames must exist in images/ folder
+  const AVATARS_MALE   = ["Kerol.jpg","Greg.jpg","Jeronimo.jpg","Wu-Ming.jpg"];
+  const AVATARS_FEMALE = ["Blanchette.jpg","Hervor.jpg","Norah.jpg","Eleonora.jpg"];
+  const AVATAR_LABELS = {
+    "Blanchette.jpg":"Blanchette",
+    "Hervor.jpg":"Hervor",
+    "Norah.jpg":"Norah",
+    "Eleonora.jpg":"Eleonora",
+    "Kerol.jpg":"Kerol",
+    "Greg.jpg":"Greg",
+    "Jeronimo.jpg":"Jeronimo",
+    "Wu-Ming.jpg":"Wu-Ming",
+  };
+
+  function hashString_(s){
+    let h = 0;
+    const str = String(s || "");
+    for (let i = 0; i < str.length; i++){
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return Math.abs(h);
+  }
+
+  // Pick a stable avatar for a player. Order of precedence:
+  //   1. Manually set m.Avatar (if it's one of the known filenames)
+  //   2. Hash of PID → one of the gender's gallery
+  //   3. Generic placeholder (handled by caller)
+  function pickAvatar_(m){
+    const manual = String(m.Avatar ?? "").trim();
+    if (manual && AVATAR_LABELS[manual]) return manual;
+
+    const gender = String(m.Gender ?? "").trim().toLowerCase();
+    const pool = gender === "male" ? AVATARS_MALE
+                : gender === "female" ? AVATARS_FEMALE
+                : null;
+    if (!pool) return null;
+    const idx = hashString_(m.PID) % pool.length;
+    return pool[idx];
+  }
+
+  // Password for Delete / Archive actions. Change this to whatever you want.
+  const ADMIN_PASSWORD = "CHANGE_ME";
+
+  // Track selected PIDs across sorts/renders
+  const selectedPids = new Set();
 
   function setMsg(t){ document.getElementById("msg").textContent = t; }
 
@@ -274,6 +542,7 @@
 
   let currentList = [];
   let sheetDefaultOrder = [];
+  let currentProfilePid = null;
 
   let sortState = { key: null, dir: 1 };
 
@@ -416,13 +685,82 @@
       if (el) el.value = "";
     });
     setMsg("");
+    updateSaveMode();
   }
 
   function fillForm(m){
     FIELDS.forEach(f => {
       const el = document.getElementById(f);
-      if (el) el.value = (m[f] ?? "");
+      if (!el) return;
+      let v = (m[f] ?? "");
+      // Treat "NA" as blank in the form for optional fields
+      if (String(v).toUpperCase() === "NA") v = "";
+
+      // Date inputs need yyyy-mm-dd format
+      if (el.type === "date" && v){
+        const d = (v instanceof Date) ? v : new Date(v);
+        if (!isNaN(d.getTime())){
+          const y = d.getFullYear();
+          const mo = String(d.getMonth()+1).padStart(2,"0");
+          const da = String(d.getDate()).padStart(2,"0");
+          v = `${y}-${mo}-${da}`;
+        } else {
+          v = "";
+        }
+      }
+
+      // For <select>, if the value isn't one of its options, add it so it displays
+      if (el.tagName === "SELECT" && v !== "") {
+        const opts = Array.from(el.options).map(o => o.value);
+        if (!opts.includes(String(v))) {
+          const opt = document.createElement("option");
+          opt.value = String(v);
+          opt.textContent = String(v);
+          el.appendChild(opt);
+        }
+      }
+      el.value = v;
     });
+    updateSaveMode();
+    refreshAvatarPreview();
+  }
+
+  // Smart save button: reflects whether current PID already exists in roster
+  function findMemberByPid(pid){
+    const p = normPid(pid);
+    if (!p) return null;
+    for (const m of currentList){
+      if (normPid(m.PID) === p) return m;
+    }
+    return null;
+  }
+
+  function updateSaveMode(){
+    const btn = document.getElementById("saveBtn");
+    const hint = document.getElementById("saveMode");
+    if (!btn) return;
+    const pidEl = document.getElementById("PID");
+    const pid = pidEl ? normPid(pidEl.value) : "";
+
+    btn.classList.remove("mode-add", "mode-update");
+
+    if (!pid){
+      btn.textContent = "Add / Update";
+      if (hint) hint.textContent = "";
+      return;
+    }
+
+    const existing = findMemberByPid(pid);
+    if (existing){
+      const nm = (existing.Name || "").toString().trim() || "player";
+      btn.textContent = `Update ${nm}`;
+      btn.classList.add("mode-update");
+      if (hint) hint.textContent = "(existing player — blanks keep current values)";
+    } else {
+      btn.textContent = "Add new player";
+      btn.classList.add("mode-add");
+      if (hint) hint.textContent = "(new player — blanks default to NA)";
+    }
   }
 
   function readForm(){
@@ -437,25 +775,156 @@
     const tb = document.getElementById("tbody");
     tb.innerHTML = "";
     list.forEach(m => {
+      const pid = normPid(m.PID);
+      const isSelected = selectedPids.has(pid);
       const tr = document.createElement("tr");
+      if (isSelected) tr.classList.add("selected");
       tr.innerHTML = `
+        <td class="sel-col"><input type="checkbox" class="rowSel" data-pid="${pid}" ${isSelected ? "checked" : ""}/></td>
         <td>${m.Name ?? ""}</td>
         <td>${m.PID ?? ""}</td>
         <td>${m.Game_Power ?? ""}</td>
         <td>${m.City_FC_Level ?? ""}</td>
         <td>${m.Foundry_Power ?? ""}</td>
-        <td>${m.Helios_Infantry ?? ""}</td>
-        <td>${m.Infantry_FC_Level ?? ""}</td>
-        <td>${m.Helios_Marksmen ?? ""}</td>
-        <td>${m.Marksmen_FC_Level ?? ""}</td>
-        <td>${m.Helios_Lancer ?? ""}</td>
-        <td>${m.Lancer_FC_Level ?? ""}</td>
       `;
       tr.style.cursor = "pointer";
-      tr.onclick = () => fillForm(m);
+
+      // Clicking the row (but not the checkbox) loads the player into the form
+      tr.onclick = (e) => {
+        if (e.target && (e.target.classList.contains("rowSel") || e.target.closest(".sel-col"))) return;
+        fillForm(m);
+      };
+
+      // Checkbox toggles selection set
+      const cb = tr.querySelector(".rowSel");
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", (e) => {
+        if (e.target.checked) selectedPids.add(pid);
+        else selectedPids.delete(pid);
+        tr.classList.toggle("selected", e.target.checked);
+        updateSelCount();
+        syncSelectAllBox();
+      });
+
       tb.appendChild(tr);
     });
+    updateSelCount();
+    syncSelectAllBox();
   }
+
+  function updateSelCount() {
+    const el = document.getElementById("selCount");
+    if (el) el.textContent = `${selectedPids.size} selected`;
+  }
+
+  function syncSelectAllBox() {
+    const all = document.getElementById("selAll");
+    if (!all) return;
+    const boxes = document.querySelectorAll(".rowSel");
+    if (boxes.length === 0) { all.checked = false; all.indeterminate = false; return; }
+    const checked = Array.from(boxes).filter(b => b.checked).length;
+    all.checked = (checked === boxes.length);
+    all.indeterminate = (checked > 0 && checked < boxes.length);
+  }
+
+  function toggleSelectAll(master) {
+    const boxes = document.querySelectorAll(".rowSel");
+    boxes.forEach(b => {
+      b.checked = master.checked;
+      const pid = b.dataset.pid;
+      if (master.checked) selectedPids.add(pid);
+      else selectedPids.delete(pid);
+      const tr = b.closest("tr");
+      if (tr) tr.classList.toggle("selected", master.checked);
+    });
+    updateSelCount();
+  }
+
+  function clearSelection() {
+    selectedPids.clear();
+    document.querySelectorAll(".rowSel").forEach(b => b.checked = false);
+    document.querySelectorAll("tbody tr.selected").forEach(tr => tr.classList.remove("selected"));
+    const all = document.getElementById("selAll");
+    if (all) { all.checked = false; all.indeterminate = false; }
+    updateSelCount();
+  }
+
+  function requirePassword(actionLabel) {
+    const pw = prompt(`Enter admin password to ${actionLabel}:`);
+    if (pw === null) return false;           // cancelled
+    if (pw !== ADMIN_PASSWORD) {
+      setMsg("Incorrect password. Action cancelled.");
+      return false;
+    }
+    return true;
+  }
+
+  // Chunk size for bulk requests. Keeps each URL under Apps Script's ~10k char limit.
+  // ~200 PIDs per batch is safe for 9-10 digit PIDs.
+  const BULK_CHUNK_SIZE = 200;
+
+  function chunk_(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  async function bulkAction(action, label) {
+    const pids = Array.from(selectedPids);
+    if (pids.length === 0) { setMsg(`Select at least one player to ${label}.`); return; }
+    if (!confirm(`${label[0].toUpperCase() + label.slice(1)} ${pids.length} player(s)?\nThis cannot be undone from the site.`)) return;
+    if (!requirePassword(label)) return;
+
+    const bulkActionName = action === "delete" ? "delete_bulk" : "archive_bulk";
+    const batches = chunk_(pids, BULK_CHUNK_SIZE);
+
+    const started = performance.now();
+    let processed = 0, success = 0, fail = 0;
+    const errors = [];
+    const notFoundAll = [];
+
+    setMsg(`${label[0].toUpperCase() + label.slice(1)}ing ${pids.length} player(s) in ${batches.length} batch(es)...`);
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      try {
+        const res = await apiPost(bulkActionName, { PIDs: batch });
+        if (res.ok) {
+          const count = (action === "delete") ? (res.deletedCount ?? 0) : (res.archivedCount ?? 0);
+          success += count;
+          if (Array.isArray(res.notFound)) notFoundAll.push(...res.notFound);
+        } else {
+          fail += batch.length;
+          errors.push(`Batch ${i + 1}: ${res.error || "unknown"}`);
+        }
+      } catch (err) {
+        fail += batch.length;
+        errors.push(`Batch ${i + 1}: ${err.message}`);
+      }
+      processed += batch.length;
+      if (batches.length > 1) {
+        setMsg(`${label[0].toUpperCase() + label.slice(1)}ing... ${processed}/${pids.length}`);
+      }
+    }
+
+    const secs = ((performance.now() - started) / 1000).toFixed(1);
+
+    const parts = [`${label} complete in ${secs}s: ${success} succeeded`];
+    if (fail)            parts.push(`${fail} failed`);
+    if (notFoundAll.length) parts.push(`${notFoundAll.length} not found`);
+    setMsg(parts.join(", ") + ".");
+
+    const dbg = [];
+    if (errors.length)      dbg.push("Errors:\n" + errors.join("\n"));
+    if (notFoundAll.length) dbg.push("Not found PIDs:\n" + notFoundAll.join(", "));
+    if (dbg.length) setDebug(dbg.join("\n\n"));
+
+    clearSelection();
+    await loadAll();
+  }
+
+  function deleteSelected()  { bulkAction("delete",  "delete");  }
+  function archiveSelected() { bulkAction("archive", "archive"); }
 
  async function loadAll() 
  {
@@ -476,6 +945,7 @@
   updateHeaderArrows();
 
   setMsg(`Loaded ${currentList.length} players.`);
+  updateSaveMode();
 }
 
 
@@ -493,16 +963,34 @@
   if (!data.PID) return setMsg("PID is required.");
 
   setMsg("Saving...");
+  // Debug: show exactly what we're sending
+  setDebug({ sending: data });
   try{
     const res = await apiPost("upsert", data);
+    // Debug: show what came back
+    setDebug({ sending: data, response: res });
 
     if (!res.ok) {
       setMsg("Save failed: " + (res.error || "Unknown error"));
       return;
     }
 
-    setMsg(`✅ ${res.message || "Saved"} (PID ${data.PID})`);
+    // Warn if the sheet is missing columns for some fields we sent
+    if (res.warning) {
+      setMsg(`⚠️ ${res.message || "Saved"} (PID ${data.PID}) — ${res.warning}`);
+      setDebug(res.warning + "\n\nFix: add these columns as headers in Alliance_Data row 1 of your Google Sheet, then try again.");
+    } else {
+      setMsg(`✅ ${res.message || "Saved"} (PID ${data.PID})`);
+    }
     await loadAll();
+
+    // If a profile is open (or we just edited the profile player), refresh the profile too
+    const pidToRefresh = currentProfilePid || normPid(data.PID);
+    if (pidToRefresh){
+      await showProfileForPid(pidToRefresh);
+      // Scroll the profile back into view so the user sees the refreshed data
+      document.getElementById("profileBody").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   } catch (err){
     setMsg("Save failed (network): " + err.message);
     setDebug(String(err));
@@ -511,7 +999,7 @@
 
 
   async function deletePID(){
-  const pid = (document.getElementById("PID").value || document.getElementById("searchPid").value).trim();
+  const pid = (document.getElementById("PID").value || "").trim();
   if (!pid) return setMsg("Enter/load a PID first.");
   if (!confirm(`Delete PID ${pid}?`)) return;
 
@@ -526,6 +1014,10 @@
 
     clearForm();
     setMsg(`✅ Deleted (PID ${pid})`);
+    // If the deleted player was the one in the profile, clear it too
+    if (currentProfilePid && normPid(currentProfilePid) === normPid(pid)){
+      clearProfile();
+    }
     await loadAll();
   } catch (err){
     setMsg("Delete failed (network): " + err.message);
@@ -542,8 +1034,273 @@
 
 
 
+  // ---------- Player Profile ----------
+  function esc_(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  function fmtDate_(v){
+    if (!v) return "";
+    const d = (v instanceof Date) ? v : new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString();
+  }
+
+  function statusClass_(s){
+    const v = String(s || "").toLowerCase();
+    if (v === "attended" || v === "yes" || v === "present") return "status-attended";
+    if (v === "missed" || v === "no" || v === "absent") return "status-missed";
+    if (v === "not registered" || v === "notregistered") return "status-notreg";
+    if (v === "not active" || v === "notactive") return "status-notactive";
+    if (!v) return "status-other";
+    return "status-other";
+  }
+
+  function ynBadge_(v){
+    const s = String(v ?? "").trim();
+    if (s.toLowerCase() === "yes") return `<span class="yes-badge">Yes</span>`;
+    if (s.toLowerCase() === "no")  return `<span class="no-badge">No</span>`;
+    if (!s || s.toUpperCase() === "NA") return `<span class="na-badge">—</span>`;
+    return esc_(s);
+  }
+
+  function findMembersByQuery(q){
+    const query = String(q || "").trim().toLowerCase();
+    if (!query) return [];
+    // First try exact PID match
+    const exact = currentList.find(m => normPid(m.PID) === normPid(query));
+    if (exact) return [exact];
+    // Otherwise substring match on Name or PID
+    return currentList.filter(m =>
+      String(m.Name ?? "").toLowerCase().includes(query) ||
+      String(m.PID ?? "").toLowerCase().includes(query)
+    ).slice(0, 10);
+  }
+
+  async function loadProfile(){
+    const q = document.getElementById("profileSearch").value.trim();
+    const msg = document.getElementById("profileMsg");
+    const suggest = document.getElementById("profileSuggestions");
+    const body = document.getElementById("profileBody");
+    suggest.innerHTML = "";
+    if (!q){ msg.textContent = "Enter a PID or Name."; return; }
+
+    const matches = findMembersByQuery(q);
+    if (matches.length === 0){
+      msg.textContent = "No matching player in the loaded roster.";
+      body.innerHTML = "";
+      return;
+    }
+    if (matches.length > 1){
+      msg.textContent = `${matches.length} matches — pick one:`;
+      suggest.innerHTML = matches.map(m =>
+        `<button style="margin:2px 4px 2px 0" onclick="pickProfileMatch('${normPid(m.PID)}')">${esc_(m.Name)} (${esc_(m.PID)})</button>`
+      ).join("");
+      body.innerHTML = "";
+      return;
+    }
+    await showProfileForPid(normPid(matches[0].PID));
+  }
+
+  async function pickProfileMatch(pid){
+    document.getElementById("profileSearch").value = pid;
+    document.getElementById("profileSuggestions").innerHTML = "";
+    await showProfileForPid(pid);
+  }
+
+  async function showProfileForPid(pid){
+    const msg = document.getElementById("profileMsg");
+    const body = document.getElementById("profileBody");
+    currentProfilePid = pid;
+    msg.textContent = "Loading profile...";
+    body.innerHTML = "";
+
+    const res = await apiGet({ view: "profile", pid });
+    if (!res.ok){
+      msg.textContent = res.error || "Error loading profile.";
+      return;
+    }
+    msg.textContent = "";
+    body.innerHTML = renderProfile_(res);
+  }
+
+  function renderProfile_(p){
+    const m = p.member || {};
+    const events = Array.isArray(p.events) ? p.events : [];
+    const canyon = Array.isArray(p.canyon) ? p.canyon : [];
+    const foundry = Array.isArray(p.foundry) ? p.foundry : [];
+    const heroes = Array.isArray(p.heroes) ? p.heroes : [];
+
+    // Header: avatar + name + PID + location
+    const avatarFile = pickAvatar_(m);
+    let avatarHtml;
+    if (avatarFile){
+      avatarHtml = `<img class="avatar" src="images/${esc_(avatarFile)}" alt="${esc_(AVATAR_LABELS[avatarFile] || "avatar")}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar avatar-placeholder',textContent:'👤'}))"/>`;
+    } else {
+      avatarHtml = `<div class="avatar avatar-placeholder">👤</div>`;
+    }
+
+    const locationLine = m.Location && String(m.Location).trim() && String(m.Location).toUpperCase() !== "NA"
+      ? `<div class="small">📍 ${esc_(m.Location)}</div>`
+      : "";
+
+    const header = `
+      <div class="profile-header">
+        ${avatarHtml}
+        <div class="profile-header-text">
+          <h4>${esc_(m.Name) || "Unknown"}</h4>
+          <div class="small">PID ${esc_(m.PID)}</div>
+          ${locationLine}
+        </div>
+      </div>`;
+
+    // Roster info block
+    const fields = [
+      ["Game Power",      esc_(m.Game_Power)],
+      ["City FC Level",   esc_(m.City_FC_Level)],
+      ["Foundry Power",   esc_(m.Foundry_Power)],
+      ["Helios Infantry", ynBadge_(m.Helios_Infantry)],
+      ["Infantry FC",     esc_(m.Infantry_FC_Level)],
+      ["Helios Marksmen", ynBadge_(m.Helios_Marksmen)],
+      ["Marksmen FC",     esc_(m.Marksmen_FC_Level)],
+      ["Helios Lancer",   ynBadge_(m.Helios_Lancer)],
+      ["Lancer FC",       esc_(m.Lancer_FC_Level)],
+      ["Gender",          esc_(m.Gender)],
+      ["Location",        esc_(m.Location)],
+      ["Avatar",          avatarFile ? (AVATAR_LABELS[avatarFile] || avatarFile) + (String(m.Avatar ?? "").trim() ? "" : " (auto)") : "—"],
+      ["Join Date",       fmtDate_(m.JoinDate)],
+      ["Leave Date",      fmtDate_(m.LeaveDate)],
+    ];
+    const roster = `
+      ${header}
+      <div class="profile-grid">
+        ${fields.map(([k,v]) => `
+          <div class="profile-field">
+            <span class="profile-label">${esc_(k)}</span>
+            <span class="profile-value">${v || "—"}</span>
+          </div>`).join("")}
+      </div>`;
+
+    // Event history
+    let eventsHtml;
+    if (events.length === 0){
+      eventsHtml = `<div class="profile-empty">No event attendance recorded.</div>`;
+    } else {
+      eventsHtml = `
+        <table class="profile-table">
+          <thead>
+            <tr><th>Event</th><th>Date</th><th>Status</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            ${events.map(e => `
+              <tr>
+                <td>${esc_(e.event)}</td>
+                <td>${fmtDate_(e.date)}</td>
+                <td><span class="status-pill ${statusClass_(e.status)}">${esc_(e.status || "—")}</span></td>
+                <td>${esc_(e.notes)}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+    }
+
+    // Heroes maxed (placeholder for now)
+    let heroesHtml = `<div class="profile-empty">Heroes maxed — coming soon. ${heroes.length ? `(${heroes.length} entries found in sheet)` : ""}</div>`;
+
+    // Canyon & Foundry participation (placeholder)
+    let canyonHtml  = `<div class="profile-empty">Canyon participation — coming soon. ${canyon.length  ? `(${canyon.length} entries found in sheet)`  : ""}</div>`;
+    let foundryHtml = `<div class="profile-empty">Foundry participation — coming soon. ${foundry.length ? `(${foundry.length} entries found in sheet)` : ""}</div>`;
+
+    return `
+      ${roster}
+      <div class="profile-sub-title">Event Attendance</div>
+      ${eventsHtml}
+      <div class="profile-sub-title">Heroes Maxed</div>
+      ${heroesHtml}
+      <div class="profile-sub-title">Canyon Participation</div>
+      ${canyonHtml}
+      <div class="profile-sub-title">Foundry Participation</div>
+      ${foundryHtml}
+    `;
+  }
+
+  function clearProfile(){
+    document.getElementById("profileSearch").value = "";
+    document.getElementById("profileMsg").textContent = "";
+    document.getElementById("profileSuggestions").innerHTML = "";
+    document.getElementById("profileBody").innerHTML = "";
+    currentProfilePid = null;
+  }
+
+  function loadProfileIntoEditor(){
+    if (!currentProfilePid){
+      setMsg("Open a profile first.");
+      return;
+    }
+    const m = currentList.find(x => normPid(x.PID) === normPid(currentProfilePid));
+    if (!m){
+      setMsg("Player not in loaded roster — click Load Players and try again.");
+      return;
+    }
+    fillForm(m);
+    setMsg(`Loaded ${m.Name || ""} (${m.PID}) into the editor.`);
+    document.getElementById("PID").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Allow Enter to submit in the profile search box
+  document.addEventListener("DOMContentLoaded", () => {
+    const ps = document.getElementById("profileSearch");
+    if (ps){
+      ps.addEventListener("keydown", (e) => {
+        if (e.key === "Enter"){ e.preventDefault(); loadProfile(); }
+      });
+    }
+  });
+
+  // Keep avatar preview next to the dropdown in sync
+  function refreshAvatarPreview(){
+    const sel = document.getElementById("Avatar");
+    const img = document.getElementById("avatarPreviewImg");
+    const lbl = document.getElementById("avatarPreviewLabel");
+    if (!sel || !img || !lbl) return;
+
+    // Read current form values to decide what to preview
+    const m = {
+      PID: (document.getElementById("PID") || {}).value,
+      Gender: (document.getElementById("Gender") || {}).value,
+      Avatar: sel.value
+    };
+    const file = pickAvatar_(m);
+    if (file){
+      img.src = `images/${file}`;
+      img.style.display = "";
+      const isAuto = !String(m.Avatar || "").trim();
+      lbl.textContent = isAuto
+        ? `${AVATAR_LABELS[file] || file} (auto)`
+        : (AVATAR_LABELS[file] || file);
+    } else {
+      img.style.display = "none";
+      lbl.textContent = "(pick Gender to preview)";
+    }
+  }
+
   loadConfig();
   initSorting();
+  // Wire PID field to live-update the save button mode
+  const pidInput = document.getElementById("PID");
+  if (pidInput){
+    pidInput.addEventListener("input", updateSaveMode);
+    pidInput.addEventListener("change", updateSaveMode);
+    pidInput.addEventListener("input", refreshAvatarPreview);
+  }
+  const genderSel = document.getElementById("Gender");
+  if (genderSel) genderSel.addEventListener("change", refreshAvatarPreview);
+  const avatarSel = document.getElementById("Avatar");
+  if (avatarSel) avatarSel.addEventListener("change", refreshAvatarPreview);
+
+  updateSaveMode();
+  refreshAvatarPreview();
   loadAll();
 </script>
 
