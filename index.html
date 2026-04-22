@@ -559,7 +559,7 @@
   .fdot { width:8px; height:8px; border-radius:50%; display:inline-block; }
 
   .hero-grid {
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
     gap:10px; margin-bottom:14px;
   }
   .hero-card {
@@ -595,12 +595,24 @@
   }
   .hero-name { font-weight:600; font-size:13px; color:#eaeef6; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .hero-stars { color:#ffd700; font-size:12px; letter-spacing:1px; margin-bottom:4px; }
-  .hero-stats { display:flex; justify-content:center; align-items:center; gap:6px; font-size:11px; color:#aab2c0; }
-  .hero-widget { background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px; }
+  /* Hero stats row — widget on the left, then all 6 skill pills.
+     flex-wrap lets the pills drop to a second line on narrow cards instead of being clipped. */
+  .hero-stats {
+    display:flex; justify-content:center; align-items:center;
+    gap:4px; font-size:11px; color:#aab2c0;
+    flex-wrap:wrap;
+  }
+  .hero-widget {
+    background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px;
+    flex:0 0 auto;
+  }
   .hero-widget b { color:#fff; }
-  .hero-skills { display:flex; gap:2px; }
+  .hero-skills {
+    display:flex; gap:2px; flex:0 1 auto; flex-wrap:nowrap;
+    justify-content:center;
+  }
   .skill-cell {
-    display:inline-block; width:14px; text-align:center; font-weight:600;
+    display:inline-block; min-width:13px; padding:0 2px; text-align:center; font-weight:600;
     background:rgba(255,255,255,0.06); border-radius:3px; color:#cfd4e0;
   }
   .skill-cell.skill-max { background:#38b464; color:#fff; }
