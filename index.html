@@ -153,6 +153,14 @@
         rgba(255,92,92,.15)
       );
     }
+    .primary
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(56,180,100,.45),
+        rgba(56,180,100,.15)
+      );
+    }
 
     /* Profile card */
     .profile-grid
@@ -327,6 +335,57 @@
       text-shadow:0 0 20px rgba(79,209,255,.6);
       user-select:none;
     }
+
+    /* ==================== ROLE-BASED ACCESS ==================== */
+    /* Role bar pinned under the banner */
+    .role-bar {
+      display:flex; align-items:center; justify-content:flex-end;
+      gap:10px; padding:8px 14px; margin:6px 0 10px 0;
+      background:#13182a; border:1px solid #263154; border-radius:8px;
+      font-size:13px;
+    }
+    .role-bar .role-label { color:#8a93a6; }
+    .role-bar .role-badge {
+      display:inline-block; padding:2px 10px; border-radius:999px;
+      font-weight:700; font-size:12px; letter-spacing:0.5px;
+      background:#263154; color:#cfd6e4;
+    }
+    .role-bar .role-badge.VIEWER { background:#2b3144; color:#9fb1d4; }
+    .role-bar .role-badge.EVENT  { background:#2a5c3c; color:#b8e7c8; }
+    .role-bar .role-badge.HR     { background:#5c3a73; color:#e5c8f0; }
+    .role-bar .role-badge.ADMIN  { background:#8a4a1f; color:#ffcfa8; }
+    .role-bar .role-badge.MASTER { background:#a91d28; color:#ffd7d7; }
+    .role-bar button {
+      padding:4px 12px; font-size:12px;
+    }
+
+    /* Sign-in modal */
+    #signInBackdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+      z-index:2000; align-items:center; justify-content:center;
+    }
+    #signInModal {
+      background:#1a2038; color:#e8ecf4; border-radius:12px;
+      padding:24px 28px; width:min(420px, 94%);
+      box-shadow:0 10px 40px rgba(0,0,0,0.5);
+      border:1px solid #2f3b5f;
+    }
+    #signInModal h3 { margin:0 0 10px; }
+    #signInModal input[type="password"] {
+      width:100%; padding:10px 12px; margin-top:10px;
+      background:#0e1324; border:1px solid #2f3b5f; color:#fff;
+      border-radius:8px; font-size:14px; box-sizing:border-box;
+    }
+    #signInModal .signin-actions {
+      display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
+    }
+    #signInMsg { margin-top:8px; font-size:13px; min-height:18px; }
+
+    /* Role-gated visibility.
+       Everything is VISIBLE by default. Elements marked .requires-X are hidden
+       unless <body> has the matching .role-<Y> class where Y's rank >= X.
+       We hide with JS in setRoleUI() for simplicity and explicitness. */
+    .role-hidden { display:none !important; }
   </style>
 </head>
 <body>
@@ -334,10 +393,33 @@
 <div class="banner">
   <div class="banner-side left">TBD</div>
   <div class="banner-center"></div>
-  <div class="banner-side right">657</div>
+  <div class="banner-side right">603</div>
 </div>
 
-<h2>Alliance Player Tracker (v1)</h2>
+<!-- ROLE BAR -->
+<div class="role-bar" id="roleBar">
+  <span class="role-label">Mode:</span>
+  <span class="role-badge VIEWER" id="roleBadge">VIEWER</span>
+  <button id="signInBtn"  onclick="openSignIn()">Sign in</button>
+  <button id="signOutBtn" onclick="signOut()" style="display:none; background:#5a3030;">Sign out</button>
+</div>
+
+<!-- SIGN-IN MODAL -->
+<div id="signInBackdrop" onclick="if(event.target===this)closeSignIn()">
+  <div id="signInModal">
+    <h3>Sign in</h3>
+    <div class="small" style="color:#9fb1d4;">Enter your access password. Your role will be detected automatically. You'll stay signed in for 2 hours of activity, or until this browser is closed.</div>
+    <input type="password" id="signInPw" placeholder="Password" autocomplete="off"
+      onkeydown="if(event.key==='Enter')submitSignIn();if(event.key==='Escape')closeSignIn()" />
+    <div id="signInMsg"></div>
+    <div class="signin-actions">
+      <button onclick="closeSignIn()" class="subtle">Cancel</button>
+      <button class="primary" onclick="submitSignIn()">Sign in</button>
+    </div>
+  </div>
+</div>
+
+<h2>TBD Alliance Player Tracker</h2>
 <div class="small">Search by PID, click row to load, add/update/delete. Data saves to Google Sheets.</div>
 
 <div class="card">
@@ -353,6 +435,282 @@
   <div id="profileBody" style="margin-top:10px;"></div>
 </div>
 
+<!-- ==================== EVENTS CARD ==================== -->
+<div class="card">
+  <div class="row" style="justify-content:space-between; align-items:center;">
+    <h3 style="margin:0;">Events</h3>
+    <div>
+      <button onclick="loadEvents()">Refresh</button>
+      <button class="primary" onclick="openNewEventModal()" data-requires="EVENT">+ Log New Event</button>
+    </div>
+  </div>
+  <div id="eventsList" style="margin-top:10px;"></div>
+  <div id="eventsMsg" class="small" style="margin-top:6px;"></div>
+</div>
+
+<!-- Event modals (hidden by default) -->
+<div id="eventModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:flex-start; justify-content:center; overflow:auto; padding:30px;">
+  <div id="eventModal" style="background:#fff; color:#000; border-radius:14px; width:min(900px,95%); margin:auto; box-shadow:0 10px 40px rgba(0,0,0,0.4); max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+    <div id="eventModalHeader" style="padding:18px 22px; background:linear-gradient(135deg,#3e4a6b,#1e2538); color:#fff; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+      <div>
+        <div id="eventModalType" style="font-size:11px; letter-spacing:2px; text-transform:uppercase; opacity:0.8;"></div>
+        <h3 id="eventModalTitle" style="margin:2px 0 0; font-size:20px; font-weight:600;">Log Event</h3>
+      </div>
+      <button onclick="closeEventModal()" style="background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:22px; width:34px; height:34px; border-radius:17px; cursor:pointer; line-height:1;">×</button>
+    </div>
+    <div style="padding:20px 22px; overflow:auto; flex:1;">
+      <div id="eventModalBody"></div>
+    </div>
+    <div id="eventModalFooter" style="padding:14px 22px; background:#f7f7fa; border-top:1px solid #e3e3ea; text-align:right;"></div>
+    <div id="eventModalMsg" class="small" style="padding:8px 22px; color:#a00; background:#fff;"></div>
+  </div>
+</div>
+<style>
+  /* Force readable contrast for buttons inside the event modal */
+  #eventModal button {
+    color:#111 !important;
+    background:#e8e9ed !important;
+    border:1px solid #c8cad1 !important;
+    padding:8px 14px !important;
+    border-radius:6px !important;
+    font-weight:500 !important;
+    cursor:pointer;
+    margin-left:8px;
+  }
+  #eventModal button:hover { background:#dcdde3 !important; }
+  #eventModal button.primary {
+    color:#fff !important;
+    background:linear-gradient(180deg,#38b464,#2a8e4d) !important;
+    border:1px solid #1e6f3a !important;
+  }
+  #eventModal button.primary:hover { filter:brightness(1.08); }
+  #eventModal button.danger {
+    color:#fff !important;
+    background:linear-gradient(180deg,#e05a5a,#b93838) !important;
+    border:1px solid #8a2020 !important;
+  }
+  #eventModal #eventModalHeader button {
+    /* Restore the close-X button look */
+    color:#fff !important;
+    background:rgba(255,255,255,0.15) !important;
+    border:none !important;
+    padding:0 !important;
+    margin:0 !important;
+    width:34px !important;
+    height:34px !important;
+    border-radius:17px !important;
+  }
+  /* Force readable contrast for table + inputs inside the event modal */
+  #eventModal, #eventModal div, #eventModal p, #eventModal span, #eventModal label {
+    color:#111 !important;
+  }
+  #eventModal table { color:#111 !important; background:#fff !important; border-collapse:collapse; width:100%; }
+  #eventModal thead th {
+    color:#111 !important;
+    background:#eef0f4 !important;
+    border-bottom:2px solid #c8cad1 !important;
+    padding:8px 10px !important;
+    text-align:left;
+    font-weight:600;
+  }
+  #eventModal tbody td {
+    color:#111 !important;
+    background:#fff !important;
+    border-bottom:1px solid #e6e7ec !important;
+    padding:6px 10px !important;
+  }
+  #eventModal tbody tr:nth-child(even) td { background:#fafbfd !important; }
+  #eventModal tbody tr:hover td { background:#f1f5ff !important; }
+  #eventModal .small { color:#555 !important; }
+  #eventModal input[type="text"],
+  #eventModal input[type="number"],
+  #eventModal input[type="date"],
+  #eventModal input[type="time"],
+  #eventModal input[type="search"],
+  #eventModal select,
+  #eventModal textarea {
+    color:#111 !important;
+    background:#fff !important;
+    border:1px solid #c8cad1 !important;
+    border-radius:6px !important;
+    padding:6px 10px !important;
+  }
+  #eventModal input::placeholder { color:#888 !important; opacity:1 !important; }
+
+  /* ======================= HEROES SECTION ======================= */
+  .hero-edit-btn {
+    background:#38b464; color:#fff; border:none; padding:6px 14px;
+    border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;
+  }
+  .hero-edit-btn:hover { filter:brightness(1.08); }
+
+  .hero-toolbar {
+    display:flex; justify-content:flex-start; gap:8px;
+    margin:8px 0 12px; flex-wrap:wrap;
+  }
+  .hero-filter-group { display:flex; gap:6px; flex-wrap:wrap; }
+  .hero-filter {
+    background:rgba(255,255,255,0.06); color:#cfd4e0; border:1px solid rgba(255,255,255,0.1);
+    padding:6px 12px; border-radius:18px; font-size:12px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .hero-filter:hover { background:rgba(255,255,255,0.12); }
+  .hero-filter.active { background:#38b464; border-color:#2a8e4d; color:#fff; }
+  .fdot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  .hero-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));
+    gap:10px; margin-bottom:14px;
+  }
+  .hero-card {
+    position:relative;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:10px 8px 8px; text-align:center;
+    transition:transform 0.12s, box-shadow 0.12s;
+  }
+  .hero-gen-badge {
+    position:absolute; top:6px; left:6px; z-index:2;
+    color:#fff; font-size:10px; font-weight:800; letter-spacing:0.3px;
+    padding:2px 6px; border-radius:8px;
+    border:1px solid rgba(0,0,0,0.25);
+    box-shadow:0 1px 3px rgba(0,0,0,0.4);
+    text-shadow:0 1px 1px rgba(0,0,0,0.35);
+  }
+  .hero-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+  .hero-card.hero-maxed { background:linear-gradient(180deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04)); border-color:rgba(255,215,0,0.4); }
+  .hero-icon-wrap {
+    position:relative; width:68px; height:68px; margin:0 auto 6px;
+    border-radius:50%; border:3px solid; padding:2px; background:#0a0e18;
+  }
+  .hero-icon { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
+  .hero-icon-fallback {
+    background:#3d8bd6; color:#fff; font-weight:700; font-size:22px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hero-max-badge {
+    position:absolute; bottom:-4px; right:-4px;
+    background:#ffd700; color:#222; font-size:9px; font-weight:800;
+    padding:2px 5px; border-radius:8px; border:1px solid #b38f00;
+    letter-spacing:0.5px;
+  }
+  .hero-name { font-weight:600; font-size:13px; color:#eaeef6; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hero-stars { color:#ffd700; font-size:12px; letter-spacing:1px; margin-bottom:4px; }
+  .hero-stats { display:flex; justify-content:center; align-items:center; gap:6px; font-size:11px; color:#aab2c0; }
+  .hero-widget { background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px; }
+  .hero-widget b { color:#fff; }
+  .hero-skills { display:flex; gap:2px; }
+  .skill-cell {
+    display:inline-block; width:14px; text-align:center; font-weight:600;
+    background:rgba(255,255,255,0.06); border-radius:3px; color:#cfd4e0;
+  }
+  .skill-cell.skill-max { background:#38b464; color:#fff; }
+
+  /* Participation bar */
+  .participation-box {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:12px 14px; margin-bottom:14px;
+  }
+  .participation-stats {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));
+    gap:10px; margin-bottom:10px;
+  }
+  .part-stat { text-align:center; }
+  .part-stat-label { font-size:11px; color:#99a1ae; text-transform:uppercase; letter-spacing:0.5px; }
+  .part-stat-value { font-size:22px; font-weight:700; color:#eaeef6; }
+  .part-stat-value.reg   { color:#3d8bd6; }
+  .part-stat-value.att   { color:#38b464; }
+  .part-stat-value.miss  { color:#e05a5a; }
+  .part-stat-value.rate  { color:#ffd700; }
+  .part-bar-wrap { height:10px; background:rgba(255,255,255,0.08); border-radius:5px; overflow:hidden; }
+  .part-bar { height:100%; background:linear-gradient(90deg,#38b464,#4fd1ff); transition:width 0.4s; }
+
+  /* Hero editor modal */
+  #heroEditor {
+    background:#fff; color:#111; border-radius:14px; width:min(1100px, 96%);
+    max-height:92vh; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+  }
+  #heroEditorHeader {
+    padding:16px 22px; background:linear-gradient(135deg,#2a8e4d,#1e5f34);
+    color:#fff; display:flex; justify-content:space-between; align-items:center;
+  }
+  #heroEditorHeader h3 { margin:0; font-weight:600; font-size:18px; }
+  #heroEditorBody { padding:18px 22px; overflow:auto; flex:1; background:#f5f6f9; }
+  #heroEditorFooter { padding:12px 22px; background:#fff; border-top:1px solid #e3e3ea; display:flex; justify-content:space-between; align-items:center; }
+  #heroEditorMsg { font-size:13px; color:#444; }
+
+  .hero-editor-gen { margin-bottom:18px; }
+  .hero-editor-gen-title {
+    font-size:12px; font-weight:700; letter-spacing:1px; color:#666;
+    text-transform:uppercase; margin-bottom:8px; padding-bottom:4px;
+    border-bottom:1px solid #ddd;
+  }
+  .hero-editor-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:10px;
+  }
+  .hero-edit-card {
+    background:#fff; border:1px solid #e3e3ea; border-radius:8px;
+    padding:10px; display:flex; flex-direction:column; gap:8px;
+    transition:box-shadow 0.12s;
+  }
+  .hero-edit-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+  .hero-edit-card.he-tracked { background:#eef8f1; border-color:#a9d9bb; }
+  .he-head {
+    display:flex; align-items:center; gap:10px; padding-left:8px;
+    border-left:4px solid #888;
+  }
+  .he-icon { width:40px; height:40px; border-radius:50%; object-fit:cover; background:#222; flex-shrink:0; }
+  .he-icon-fb { display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+  .he-name { font-size:14px; font-weight:600; color:#111; }
+  .he-sub  { font-size:11px; color:#777; }
+  .he-max, .he-clear {
+    margin-left:auto; background:#e8e9ed; color:#111; border:1px solid #c8cad1;
+    padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;
+  }
+  .he-max { background:#ffd700; border-color:#b38f00; }
+  .he-max:hover { filter:brightness(1.08); }
+  .he-clear { margin-left:4px; padding:4px 7px; }
+  .he-clear:hover { background:#f5c7c7; border-color:#d66; }
+  .he-row {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    font-size:12px; color:#444;
+  }
+  .he-row label { font-weight:600; color:#333; min-width:30px; }
+  .he-row select {
+    background:#fff; color:#111; border:1px solid #c8cad1; border-radius:4px;
+    padding:3px 4px; font-size:12px;
+  }
+  .he-skills label { min-width:24px; font-size:11px; color:#555; }
+  .he-skills select { min-width:48px; }
+  .he-cap-note {
+    font-size:11px; color:#667; font-style:italic;
+    padding:2px 8px; background:#f3f5f9; border-radius:4px;
+    border-left:3px solid #2a8e4d;
+  }
+</style>
+
+<!-- ==================== HERO EDITOR MODAL ==================== -->
+<div id="heroEditorBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1001; align-items:flex-start; justify-content:center; overflow:auto; padding:30px;">
+  <div id="heroEditor">
+    <div id="heroEditorHeader">
+      <div>
+        <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; opacity:0.8;">HEROES</div>
+        <h3 id="heroEditorTitle">Edit Heroes</h3>
+      </div>
+      <button onclick="closeHeroEditor()" style="background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:22px; width:34px; height:34px; border-radius:17px; cursor:pointer; line-height:1;">×</button>
+    </div>
+    <div id="heroEditorBody"></div>
+    <div id="heroEditorFooter">
+      <div id="heroEditorMsg"></div>
+      <div>
+        <button onclick="closeHeroEditor()" style="background:#e8e9ed; color:#111; border:1px solid #c8cad1; padding:8px 14px; border-radius:6px; font-weight:500; cursor:pointer; margin-right:8px;">Cancel</button>
+        <button onclick="saveHeroEditor()" style="background:linear-gradient(180deg,#38b464,#2a8e4d); color:#fff; border:1px solid #1e6f3a; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;">Save Heroes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card">
   <div class="row">
     <label>API URL:
@@ -363,16 +721,48 @@
     </label>
     <button onclick="saveConfig()">Save</button>
     <button onclick="loadAll()">Load Players</button>
+    <button onclick="syncAllFromGame()" title="Pull nickname + furnace level from the game for every player with a PID" style="background:#2a8e4d;">↻ Sync All from Game</button>
     <span id="msg" class="small"></span>
     <pre id="debug" class="small" style="white-space:pre-wrap; background:#111; color:#0f0; padding:10px; border-radius:8px; max-height:220px; overflow:auto; margin-top:10px;"></pre>
+    <div id="syncProgress" style="display:none; margin-top:8px; padding:10px 12px; background:#e8f5ec; border:1px solid #a9d9bb; border-radius:8px; color:#1e5f34;"></div>
   </div>
 </div>
 
-<div class="card">
-  <h3>Edit Player</h3>
+<!-- ==================== GIFT CODES ==================== -->
+<div class="card" id="giftCodesCard" data-requires="ADMIN">
+  <h3 style="display:flex; align-items:center; gap:10px;">
+    🎁 Gift Codes
+    <span class="small" style="font-weight:400; color:#8a93a6;">Redeem for the whole alliance · Admin only</span>
+  </h3>
+  <div class="row" style="gap:8px; flex-wrap:wrap;">
+    <input id="giftCodeInput" placeholder="Paste gift code (e.g. gogoWOS)" style="min-width:240px; text-transform:none;" />
+    <button onclick="redeemGiftCodeForAlliance()" style="background:#2a8e4d;">Redeem for Alliance</button>
+    <button onclick="checkWikiForNewCodes()" style="background:#3d8bd6;" title="Fetch the community wiki and list active codes I haven't tried yet">Check Wiki Now</button>
+    <button onclick="refreshGiftCodesTable()" class="subtle">Refresh History</button>
+    <span id="giftCodeMsg" class="small"></span>
+  </div>
+  <div id="giftCodeProgress" style="display:none; margin-top:10px; padding:10px 12px; background:#e8f5ec; border:1px solid #a9d9bb; border-radius:8px; color:#1e5f34;"></div>
+  <div id="giftCodesHistory" style="margin-top:10px;"></div>
+  <details style="margin-top:8px;">
+    <summary class="small" style="cursor:pointer; color:#8a93a6;">About auto-check</summary>
+    <div class="small" style="margin-top:6px; color:#aab2c0; line-height:1.5;">
+      To enable the daily auto-check, open your Apps Script project → <b>Triggers</b> (clock icon) → <b>Add Trigger</b>,
+      pick function <code>autoCheckGiftCodes</code>, type <b>Time-driven</b> → <b>Hour timer</b>,
+      and set it to run twice a day (e.g. 8am and 8pm). The cron reads the community wiki,
+      auto-redeems any new codes for everyone in your roster, and logs results to the <code>GiftCodes</code> and <code>GiftCodeLog</code> sheets.
+    </div>
+  </details>
+</div>
+
+<div class="card" data-requires="HR">
+  <h3>Edit Player <span class="small" style="font-weight:400; color:#8a93a6;">· HR, ADMIN, or MASTER</span></h3>
   <div class="row">
     <button onclick="clearForm()">Clear</button>
-    <button class="danger" onclick="deletePID()">Delete PID</button>
+    <button onclick="retrieveCurrentPid()" title="Load this PID's saved data from the sheet into the form" style="background:#2c6cb0;">⇣ Retrieve</button>
+    <button onclick="viewCurrentProfile()" title="Open the full profile for this PID" style="background:#6d4ab8;">👤 View Profile</button>
+    <button onclick="syncCurrentFromGame()" title="Pull nickname + furnace level from the game for the PID in the form" style="background:#2a8e4d;">↻ Sync from Game</button>
+    <button class="danger" onclick="deletePID()" data-requires="MASTER" title="Master only">Delete PID</button>
+    <span id="syncOneMsg" class="small"></span>
   </div>
 
   <div class="row">
@@ -457,8 +847,8 @@
     <button onclick="resetToSheetOrder()">Reset to Sheet Order</button>
     <span id="selCount" class="small">0 selected</span>
     <div class="spacer"></div>
-    <button class="warn" onclick="archiveSelected()">Archive Selected</button>
-    <button class="danger" onclick="deleteSelected()">Delete Selected</button>
+    <button class="warn"   onclick="archiveSelected()" data-requires="ADMIN"  title="Admin or Master">Archive Selected</button>
+    <button class="danger" onclick="deleteSelected()"  data-requires="MASTER" title="Master only">Delete Selected</button>
   </div>
   <table>
     <thead>
@@ -526,8 +916,161 @@
     return pool[idx];
   }
 
-  // Password for Delete / Archive actions. Change this to whatever you want.
-  const ADMIN_PASSWORD = "CHANGE_ME";
+  // ==================================================================
+  // ROLE-BASED ACCESS — session manager
+  //
+  // The user signs in once with a password. The backend identifies which
+  // role that password unlocks (VIEWER / EVENT / HR / ADMIN / MASTER).
+  // We keep the password + detected role in sessionStorage so it:
+  //   - clears when the browser/tab is closed
+  //   - persists across reloads of the same tab
+  // We also track lastActivity and auto-sign-out after 2 hours of no input.
+  // ==================================================================
+  const SESSION_KEY = "tbd_alliance_session";
+  const SESSION_INACTIVITY_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+  const ROLE_RANK = { VIEWER:0, EVENT:1, HR:2, ADMIN:3, MASTER:4 };
+  // What a given signed-in role is ALLOWED to do (matches backend requireRole_).
+  const ROLE_ALLOWS = {
+    VIEWER: new Set(["VIEWER","EVENT","HR","ADMIN","MASTER"]),
+    EVENT:  new Set(["EVENT","ADMIN","MASTER"]),
+    HR:     new Set(["HR","ADMIN","MASTER"]),
+    ADMIN:  new Set(["ADMIN","MASTER"]),
+    MASTER: new Set(["MASTER"])
+  };
+
+  // Returns true if the current role satisfies the minimum role.
+  function roleAllows(currentRole, minRole) {
+    const set = ROLE_ALLOWS[minRole];
+    if (!set) return false;
+    return set.has(currentRole);
+  }
+
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || !s.role || !s.password) return null;
+      const age = Date.now() - (s.lastActivity || 0);
+      if (age > SESSION_INACTIVITY_MS) {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function saveSession(role, password) {
+    const s = { role, password, lastActivity: Date.now() };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    return s;
+  }
+
+  function touchSession() {
+    const s = loadSession();
+    if (!s) return;
+    s.lastActivity = Date.now();
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  }
+
+  function currentRole() {
+    const s = loadSession();
+    return s ? s.role : "VIEWER";
+  }
+
+  function currentPassword() {
+    const s = loadSession();
+    return s ? s.password : "";
+  }
+
+  function signOut() {
+    sessionStorage.removeItem(SESSION_KEY);
+    setRoleUI("VIEWER");
+    setMsg("Signed out.");
+  }
+
+  // Sign-in modal controls
+  function openSignIn() {
+    document.getElementById("signInBackdrop").style.display = "flex";
+    document.getElementById("signInMsg").textContent = "";
+    const inp = document.getElementById("signInPw");
+    inp.value = "";
+    setTimeout(() => inp.focus(), 50);
+  }
+
+  function closeSignIn() {
+    document.getElementById("signInBackdrop").style.display = "none";
+  }
+
+  async function submitSignIn() {
+    const pw = document.getElementById("signInPw").value || "";
+    const msg = document.getElementById("signInMsg");
+    if (!pw) { msg.style.color = "#ffb0b0"; msg.textContent = "Enter a password."; return; }
+    msg.style.color = "#9fb1d4"; msg.textContent = "Checking\u2026";
+    const res = await apiGet({ view: "whoami", password: pw });
+    if (!res.ok) {
+      msg.style.color = "#ffb0b0"; msg.textContent = "Error: " + (res.error || "unknown");
+      return;
+    }
+    if (!res.authenticated || res.role === "VIEWER") {
+      msg.style.color = "#ffb0b0"; msg.textContent = "Password not recognized.";
+      return;
+    }
+    saveSession(res.role, pw);
+    setRoleUI(res.role);
+    closeSignIn();
+    setMsg("Signed in as " + res.role + ".");
+  }
+
+  // Update the whole UI based on current role. Call after sign-in / sign-out.
+  function setRoleUI(role) {
+    // Badge text + class
+    const badge = document.getElementById("roleBadge");
+    if (badge) {
+      badge.textContent = role;
+      badge.className = "role-badge " + role;
+    }
+    // Sign in / sign out buttons
+    const signInBtn  = document.getElementById("signInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+    if (signInBtn && signOutBtn) {
+      if (role === "VIEWER") {
+        signInBtn.style.display = "";
+        signOutBtn.style.display = "none";
+      } else {
+        signInBtn.style.display = "none";
+        signOutBtn.style.display = "";
+        signOutBtn.textContent = "Sign out (" + role + ")";
+      }
+    }
+    // body class so CSS can target if ever needed
+    document.body.className = document.body.className.replace(/\brole-\w+\b/g, "").trim();
+    document.body.classList.add("role-" + role);
+
+    // Hide / show elements tagged with .requires-<ROLE>
+    document.querySelectorAll("[data-requires]").forEach(el => {
+      const need = el.getAttribute("data-requires");
+      if (roleAllows(role, need)) el.classList.remove("role-hidden");
+      else el.classList.add("role-hidden");
+    });
+  }
+
+  // Activity listeners — refresh lastActivity on user input
+  ["click","keydown","mousemove","touchstart"].forEach(evt => {
+    document.addEventListener(evt, () => touchSession(), { passive: true });
+  });
+  // Every 30s, check if the session timed out and bounce back to VIEWER
+  setInterval(() => {
+    const s = loadSession();
+    if (!s && currentRole() !== "VIEWER") {
+      // shouldn't happen; currentRole() reads the same store. just in case.
+      setRoleUI("VIEWER");
+    }
+    if (!s && document.body.classList.contains("role-VIEWER") === false) {
+      setRoleUI("VIEWER");
+    }
+  }, 30000);
 
   // Track selected PIDs across sorts/renders
   const selectedPids = new Set();
@@ -660,17 +1203,25 @@
       }
   }
 
-  async function apiPost(action, payload) 
+  async function apiPost(action, payload)
   {
     try {
       const { url, key } = cfg();
       if (!url) return { ok: false, error: "Missing API URL" };
-  
+
+      // Auto-attach the session password for role-gated endpoints.
+      // Caller can still override by passing an explicit admin_password in payload.
+      const pw = currentPassword();
+      const finalPayload = Object.assign({}, payload || {});
+      if (pw && !finalPayload.admin_password && !finalPayload.password && !finalPayload.role_password) {
+        finalPayload.admin_password = pw;
+      }
+
       const u = new URL(url);
       u.searchParams.set("key", key);
       u.searchParams.set("action", action);
-      u.searchParams.set("payload", JSON.stringify(payload));
-  
+      u.searchParams.set("payload", JSON.stringify(finalPayload));
+
       const r = await fetch(u.toString());
       return await r.json();
     } catch (e) {
@@ -678,6 +1229,313 @@
     }
   }
 
+  // ---- Game data sync ----
+  async function syncCurrentFromGame(){
+    const pid = (document.getElementById("PID").value || "").trim();
+    const msg = document.getElementById("syncOneMsg");
+    if (!pid){ msg.style.color = "#a00"; msg.textContent = "Enter or load a PID first."; return; }
+    if (!roleAllows(currentRole(), "HR")){
+      msg.style.color = "#a00";
+      msg.textContent = "Sign in as HR or higher to sync from the game.";
+      openSignIn();
+      return;
+    }
+    msg.style.color = "#555";
+    msg.textContent = "Syncing from game…";
+    const res = await apiPost("sync_game_info", { PID: pid });
+    if (!res.ok){
+      msg.style.color = "#a00";
+      msg.textContent = "Sync failed: " + (res.error || "unknown");
+      return;
+    }
+    // Update the form fields in place so the user sees the change
+    if (res.newName) {
+      const nameEl = document.getElementById("Name");
+      if (nameEl) nameEl.value = res.newName;
+    }
+    if (res.newFurnace) {
+      const fcEl = document.getElementById("City_FC_Level");
+      if (fcEl) fcEl.value = res.newFurnace;
+    }
+    const parts = [];
+    if (res.nameChanged)    parts.push(`Name: ${res.oldName || '(blank)'} → ${res.newName}`);
+    if (res.furnaceChanged) parts.push(`Furnace: ${res.oldFurnace || 0} → ${res.newFurnace}`);
+    msg.style.color = "#2a8e4d";
+    msg.textContent = parts.length ? ("Updated — " + parts.join(" · ")) : "Already up to date.";
+    // Refresh the roster cache so the bottom table and profile show fresh values
+    try { await loadAll(); } catch (e) {}
+  }
+
+  async function syncAllFromGame(){
+    if (!roleAllows(currentRole(), "HR")){
+      setMsg("Sign in as HR, ADMIN, or MASTER to sync the roster.");
+      openSignIn();
+      return;
+    }
+    const box = document.getElementById("syncProgress");
+    const list = (currentList || []).filter(m => String(m.PID || "").trim() && String(m.PID).toLowerCase() !== "na");
+    if (list.length === 0){
+      if (!confirm("No players loaded. Click Load Players first, or continue anyway to sync the full roster on the server?")) return;
+    } else if (!confirm(`Sync ${list.length} players from the game?\n\nThis takes ~${Math.ceil(list.length*1.2/60)} minute(s) at ~1 request/second to respect the game's rate limit. Name and Furnace Level will be auto-updated. All other fields stay untouched.`)) {
+      return;
+    }
+
+    box.style.display = "block";
+    box.innerHTML = "Starting sync… this can take a minute for large alliances.";
+
+    // Run on the server in one shot (it paces internally). Apps Script allows ~6 min per request,
+    // so ~300 players is the safe upper bound; we chunk if needed.
+    let startIndex = 0;
+    let totalUpdated = 0, totalErrors = 0, totalUnchanged = 0, totalProcessed = 0, totalInRoster = 0;
+    const changes = []; // {pid, oldName, newName, oldFurnace, newFurnace}
+    const errors = [];  // {pid, error}
+    const CHUNK = 200; // PIDs per request
+
+    while (true) {
+      box.innerHTML = `Syncing… processed <b>${totalProcessed}</b> so far. Please keep this tab open.`;
+      const res = await apiPost("sync_game_all", { startIndex, limit: CHUNK });
+      if (!res.ok){
+        box.style.background = "#fde7e7";
+        box.style.borderColor = "#e0a0a0";
+        box.style.color = "#8a1f1f";
+        box.innerHTML = "Sync failed: " + (res.error || "unknown");
+        return;
+      }
+      totalUpdated   += res.updated || 0;
+      totalUnchanged += res.unchanged || 0;
+      totalErrors    += res.errors || 0;
+      totalProcessed += res.total || 0;
+      totalInRoster   = res.totalInRoster || totalInRoster;
+
+      (res.results || []).forEach(r => {
+        if (!r.ok) { errors.push({ pid: r.pid, error: r.error }); return; }
+        if (r.nameChanged || r.furnaceChanged){
+          changes.push({
+            pid: r.pid,
+            oldName: r.oldName, newName: r.newName, nameChanged: r.nameChanged,
+            oldFurnace: r.oldFurnace, newFurnace: r.newFurnace, furnaceChanged: r.furnaceChanged
+          });
+        }
+      });
+
+      if (res.nextIndex == null) break;
+      startIndex = res.nextIndex;
+    }
+
+    let html = `<div style="font-weight:700; margin-bottom:4px;">Sync complete</div>`;
+    html += `<div>Processed <b>${totalProcessed}</b> of <b>${totalInRoster}</b> · Updated <b style="color:#2a8e4d">${totalUpdated}</b> · Unchanged <b>${totalUnchanged}</b> · Errors <b style="color:#a00">${totalErrors}</b></div>`;
+
+    if (changes.length){
+      html += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600;">Show ${changes.length} change(s)</summary>`;
+      html += `<table style="width:100%; margin-top:6px; border-collapse:collapse; font-size:12px;">`;
+      html += `<tr style="background:#d4ecdb;"><th style="text-align:left; padding:4px 6px;">PID</th><th style="text-align:left; padding:4px 6px;">Name</th><th style="text-align:left; padding:4px 6px;">Furnace</th></tr>`;
+      changes.forEach(c => {
+        const nameCell = c.nameChanged ? `<s>${esc_(c.oldName||'')}</s> → <b>${esc_(c.newName||'')}</b>` : `${esc_(c.newName||c.oldName||'')}`;
+        const fcCell   = c.furnaceChanged ? `<s>${c.oldFurnace||0}</s> → <b>${c.newFurnace||0}</b>` : `${c.newFurnace||c.oldFurnace||0}`;
+        html += `<tr><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${esc_(c.pid)}</td><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${nameCell}</td><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${fcCell}</td></tr>`;
+      });
+      html += `</table></details>`;
+    }
+    if (errors.length){
+      html += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600; color:#8a1f1f;">Show ${errors.length} error(s)</summary>`;
+      html += `<div style="font-size:12px; margin-top:4px;">` +
+              errors.map(e => `<div>• ${esc_(e.pid)}: ${esc_(e.error || '')}</div>`).join("") +
+              `</div></details>`;
+    }
+    box.innerHTML = html;
+
+    // Refresh the roster table now that names/furnace may have changed
+    try { await loadAll(); } catch (e) {}
+  }
+
+  // ---- Gift code redemption ----
+  async function redeemGiftCodeForAlliance(){
+    const code = (document.getElementById("giftCodeInput").value || "").trim();
+    const msg  = document.getElementById("giftCodeMsg");
+    const box  = document.getElementById("giftCodeProgress");
+
+    if (!code){ msg.style.color = "#a00"; msg.textContent = "Enter a code."; return; }
+    // Gift code redeem requires ADMIN.
+    if (!roleAllows(currentRole(), "ADMIN")){
+      msg.style.color = "#a00";
+      msg.textContent = "Sign in as ADMIN or MASTER to redeem gift codes.";
+      openSignIn();
+      return;
+    }
+    // apiPost will auto-attach the session password as admin_password.
+    const pw = currentPassword();
+
+    const list = (currentList || []).filter(m => String(m.PID || "").trim() && String(m.PID).toLowerCase() !== "na");
+    const est = Math.max(1, list.length);
+    if (!confirm(`Redeem "${code}" for ${est || '?'} players?\n\nThis takes ~${Math.ceil(est*1.2/60)} minute(s) at ~1 request/second to respect the game's rate limit.`)) return;
+
+    msg.style.color = "#555"; msg.textContent = "";
+    box.style.display = "block";
+    box.style.background = "#e8f5ec"; box.style.borderColor = "#a9d9bb"; box.style.color = "#1e5f34";
+    box.innerHTML = `Redeeming <b>${esc_(code)}</b>… keep this tab open.`;
+
+    let startIndex = 0;
+    let stats = { success:0, alreadyClaimed:0, invalid:0, expired:0, errors:0, skipped:0 };
+    let total = 0, totalInRoster = 0;
+    const results = [];
+    // Chunk size must match the backend cap. Each redeem costs ~8–15s (captcha
+    // solve + possible retry), so 15 PIDs ≈ 2–3 min per batch on a busy run.
+    const CHUNK = 15;
+    let stopped = null;
+    const startedAt = Date.now();
+
+    // Helper: update the progress box with elapsed time + live stats
+    function renderProgress(phase){
+      const secs = Math.round((Date.now() - startedAt)/1000);
+      const mm = Math.floor(secs/60), ss = String(secs%60).padStart(2,"0");
+      const rosterLine = totalInRoster ? ` of <b>${totalInRoster}</b>` : "";
+      box.innerHTML =
+        `${phase} <b>${esc_(code)}</b>… processed <b>${total}</b>${rosterLine} · ⌚ ${mm}:${ss}` +
+        (total > 0
+          ? `<div style="font-size:12px; margin-top:3px;">✔ ${stats.success} success · ${stats.alreadyClaimed} already claimed · ${stats.errors} errors</div>`
+          : `<div style="font-size:12px; margin-top:3px; opacity:0.75;">First batch in flight — game API limits us to ~1 request/sec.</div>`);
+    }
+
+    renderProgress("Redeeming");
+    // Tick the timer while a batch is in flight so the UI doesn't look frozen.
+    const ticker = setInterval(() => renderProgress("Redeeming"), 1000);
+
+    while (true){
+      const res = await apiPost("redeem_code", { code, admin_password: pw, startIndex, limit: CHUNK });
+      if (!res.ok){
+        clearInterval(ticker);
+        box.style.background = "#fde7e7"; box.style.borderColor = "#e0a0a0"; box.style.color = "#8a1f1f";
+        box.innerHTML = "Redemption failed: " + esc_(res.error || "unknown");
+        return;
+      }
+      stats.success        += res.success || 0;
+      stats.alreadyClaimed += res.alreadyClaimed || 0;
+      stats.invalid        += res.invalid || 0;
+      stats.expired        += res.expired || 0;
+      stats.errors         += res.errors || 0;
+      stats.skipped        += res.skipped || 0;
+      total += res.total || 0;
+      totalInRoster = res.totalInRoster || totalInRoster;
+      (res.results || []).forEach(r => results.push(r));
+
+      renderProgress("Redeeming");
+      if (res.stoppedEarly){ stopped = res.stopReason; break; }
+      if (res.nextIndex == null) break;
+      startIndex = res.nextIndex;
+    }
+    clearInterval(ticker);
+
+    // Build summary
+    let banner = "";
+    if (stopped === "invalid")      banner = `<div style="color:#8a1f1f; font-weight:700;">Code is invalid — stopped early.</div>`;
+    else if (stopped === "expired") banner = `<div style="color:#8a1f1f; font-weight:700;">Code is expired — stopped early.</div>`;
+    else                            banner = `<div style="font-weight:700;">Redemption complete.</div>`;
+
+    let html = banner +
+      `<div>Code: <b>${esc_(code)}</b> · Processed <b>${total}</b> of <b>${totalInRoster}</b></div>` +
+      `<div style="margin-top:4px;">` +
+      `<span style="color:#2a8e4d;">✔ Success: <b>${stats.success}</b></span> · ` +
+      `<span>Already claimed: <b>${stats.alreadyClaimed}</b></span> · ` +
+      `<span>Skipped (prior run): <b>${stats.skipped}</b></span> · ` +
+      `<span style="color:#a00;">Errors: <b>${stats.errors}</b></span>` +
+      `</div>`;
+
+    // Show errors inline
+    const errRows = results.filter(r => r.result !== "SUCCESS" && r.result !== "ALREADY_CLAIMED" && r.result !== "SKIPPED");
+    if (errRows.length){
+      html += `<details style="margin-top:6px;"><summary style="cursor:pointer;">Show ${errRows.length} issue(s)</summary>` +
+              `<div style="font-size:12px; margin-top:4px; max-height:200px; overflow:auto;">` +
+              errRows.map(r => `<div>• <b>${esc_(r.pid)}</b> ${esc_(r.name||'')}: ${esc_(r.result)} — ${esc_(r.message||'')}</div>`).join("") +
+              `</div></details>`;
+    }
+    box.innerHTML = html;
+
+    // Refresh history table
+    refreshGiftCodesTable();
+  }
+
+  async function checkWikiForNewCodes(){
+    const msg = document.getElementById("giftCodeMsg");
+    msg.style.color = "#555"; msg.textContent = "Checking wiki…";
+    const res = await apiGet({ view: "check_wiki_codes" });
+    // The POST-style action wouldn't need auth either, but wiring via action=check_wiki_codes keeps it simple:
+    const r2 = await apiPost("check_wiki_codes", {});
+    const data = r2.ok ? r2 : res;
+    if (!data || !data.ok){
+      msg.style.color = "#a00"; msg.textContent = "Wiki check failed: " + ((data && data.error) || "unknown");
+      return;
+    }
+    const codes = data.codes || [];
+    if (codes.length === 0){
+      msg.style.color = "#555"; msg.textContent = "Wiki returned no codes (page may have changed layout).";
+      return;
+    }
+    msg.style.color = "#2a8e4d";
+    msg.textContent = `Found ${codes.length} active code(s) on wiki: ${codes.join(", ")}. Paste one above to redeem.`;
+  }
+
+  async function refreshGiftCodesTable(){
+    const host = document.getElementById("giftCodesHistory");
+    host.innerHTML = `<div class="small" style="color:#aab2c0;">Loading history…</div>`;
+    const res = await apiGet({ view: "gift_codes" });
+    if (!res.ok){ host.innerHTML = `<div class="small" style="color:#a00;">Failed to load: ${esc_(res.error || 'unknown')}</div>`; return; }
+    const codes = res.codes || [];
+    if (codes.length === 0){
+      host.innerHTML = `<div class="small" style="color:#aab2c0;">No gift codes tried yet. Paste one above or wait for the daily auto-check.</div>`;
+      return;
+    }
+    const fmt = v => {
+      if (!v) return "";
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return esc_(String(v));
+      return d.toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    };
+    const statusChip = s => {
+      const v = String(s || "active").toLowerCase();
+      const map = {
+        active:   { bg:'#3d8bd6', fg:'#fff', label:'Active' },
+        complete: { bg:'#2a8e4d', fg:'#fff', label:'Complete' },
+        invalid:  { bg:'#a00',    fg:'#fff', label:'Invalid' },
+        expired:  { bg:'#777',    fg:'#fff', label:'Expired' }
+      };
+      const c = map[v] || map.active;
+      return `<span style="background:${c.bg}; color:${c.fg}; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">${c.label}</span>`;
+    };
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:13px;">` +
+      `<thead><tr style="background:rgba(255,255,255,0.06); color:#cfd4e0;">` +
+      `<th style="text-align:left; padding:6px 8px;">Code</th>` +
+      `<th style="text-align:left; padding:6px 8px;">Status</th>` +
+      `<th style="text-align:left; padding:6px 8px;">First Seen</th>` +
+      `<th style="text-align:left; padding:6px 8px;">Last Tried</th>` +
+      `<th style="text-align:left; padding:6px 8px;">Source</th>` +
+      `<th style="text-align:right; padding:6px 8px;">✔</th>` +
+      `<th style="text-align:right; padding:6px 8px;">Dup</th>` +
+      `<th style="text-align:right; padding:6px 8px;">Err</th>` +
+      `<th style="padding:6px 8px;"></th>` +
+      `</tr></thead><tbody>`;
+    codes.forEach(c => {
+      html += `<tr style="border-top:1px solid rgba(255,255,255,0.08);">` +
+        `<td style="padding:6px 8px; font-family:monospace; color:#eaeef6;"><b>${esc_(c.Code)}</b></td>` +
+        `<td style="padding:6px 8px;">${statusChip(c.Status)}</td>` +
+        `<td style="padding:6px 8px; color:#aab2c0;">${fmt(c.FirstSeen)}</td>` +
+        `<td style="padding:6px 8px; color:#aab2c0;">${fmt(c.LastTried)}</td>` +
+        `<td style="padding:6px 8px; color:#aab2c0;">${esc_(c.Source || '')}</td>` +
+        `<td style="padding:6px 8px; text-align:right; color:#38b464;"><b>${Number(c.Success)||0}</b></td>` +
+        `<td style="padding:6px 8px; text-align:right; color:#aab2c0;">${Number(c.AlreadyClaimed)||0}</td>` +
+        `<td style="padding:6px 8px; text-align:right; color:#e05a5a;">${Number(c.Errors)||0}</td>` +
+        `<td style="padding:6px 8px; text-align:right;">` +
+          `<button class="subtle" style="font-size:11px; padding:3px 8px;" onclick="prefillCode('${esc_(c.Code).replace(/'/g,"&#39;")}')">Use</button>` +
+        `</td>` +
+        `</tr>`;
+    });
+    html += `</tbody></table>`;
+    host.innerHTML = html;
+  }
+
+  function prefillCode(code){
+    document.getElementById("giftCodeInput").value = code;
+    document.getElementById("giftCodeInput").focus();
+  }
 
   function clearForm(){
     FIELDS.forEach(f => {
@@ -686,6 +1544,33 @@
     });
     setMsg("");
     updateSaveMode();
+  }
+
+  // View Profile: open the full profile page for the PID currently in the form.
+  async function viewCurrentProfile(){
+    const pidEl = document.getElementById("PID");
+    const pid = pidEl ? normPid(pidEl.value) : "";
+    if (!pid){ setMsg("Type or load a PID first."); return; }
+    try {
+      await showProfileForPid(pid);
+    } catch (e) {
+      setMsg("Could not open profile: " + e.message);
+    }
+  }
+
+  // Retrieve: pull existing sheet data for the typed PID into the form,
+  // so editing one field and clicking Update preserves everything else.
+  function retrieveCurrentPid(){
+    const pidEl = document.getElementById("PID");
+    const pid = pidEl ? normPid(pidEl.value) : "";
+    if (!pid){ setMsg("Type a PID first, then click Retrieve."); return; }
+    const m = findMemberByPid(pid);
+    if (!m){
+      setMsg(`PID ${pid} is not in the roster yet. Fill the form to add them.`);
+      return;
+    }
+    fillForm(m);
+    setMsg(`Loaded saved data for ${m.Name || pid}. Edit any field and click Update.`);
   }
 
   function fillForm(m){
@@ -789,10 +1674,14 @@
       `;
       tr.style.cursor = "pointer";
 
-      // Clicking the row (but not the checkbox) loads the player into the form
+      // Clicking the row (but not the checkbox) opens the Player Profile
       tr.onclick = (e) => {
         if (e.target && (e.target.classList.contains("rowSel") || e.target.closest(".sel-col"))) return;
-        fillForm(m);
+        const searchBox = document.getElementById("profileSearch");
+        if (searchBox) searchBox.value = normPid(m.PID);
+        showProfileForPid(normPid(m.PID));
+        const card = document.getElementById("profileBody");
+        if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
       };
 
       // Checkbox toggles selection set
@@ -849,14 +1738,17 @@
     updateSelCount();
   }
 
-  function requirePassword(actionLabel) {
-    const pw = prompt(`Enter admin password to ${actionLabel}:`);
-    if (pw === null) return false;           // cancelled
-    if (pw !== ADMIN_PASSWORD) {
-      setMsg("Incorrect password. Action cancelled.");
-      return false;
-    }
-    return true;
+  // Guard for bulk delete / archive. Takes the minimum role required:
+  //   - "ADMIN"  for archive (any admin or master)
+  //   - "MASTER" for hard delete (master only)
+  // If the user isn't signed in at a high enough level, we prompt them to sign in.
+  function requirePassword(actionLabel, minRole) {
+    const need = minRole || "ADMIN";
+    const role = currentRole();
+    if (roleAllows(role, need)) return true;
+    setMsg(`You must be signed in as ${need} to ${actionLabel}.`);
+    openSignIn();
+    return false;
   }
 
   // Chunk size for bulk requests. Keeps each URL under Apps Script's ~10k char limit.
@@ -873,7 +1765,9 @@
     const pids = Array.from(selectedPids);
     if (pids.length === 0) { setMsg(`Select at least one player to ${label}.`); return; }
     if (!confirm(`${label[0].toUpperCase() + label.slice(1)} ${pids.length} player(s)?\nThis cannot be undone from the site.`)) return;
-    if (!requirePassword(label)) return;
+    // delete requires MASTER, archive requires ADMIN
+    const needed = action === "delete" ? "MASTER" : "ADMIN";
+    if (!requirePassword(label, needed)) return;
 
     const bulkActionName = action === "delete" ? "delete_bulk" : "archive_bulk";
     const batches = chunk_(pids, BULK_CHUNK_SIZE);
@@ -961,6 +1855,11 @@
  async function upsert(){
   const data = readForm();
   if (!data.PID) return setMsg("PID is required.");
+  if (!roleAllows(currentRole(), "HR")){
+    setMsg("Sign in as HR, ADMIN, or MASTER to edit players.");
+    openSignIn();
+    return;
+  }
 
   setMsg("Saving...");
   // Debug: show exactly what we're sending
@@ -1001,6 +1900,7 @@
   async function deletePID(){
   const pid = (document.getElementById("PID").value || "").trim();
   if (!pid) return setMsg("Enter/load a PID first.");
+  if (!roleAllows(currentRole(), "MASTER")) { setMsg("Only MASTER can delete players."); openSignIn(); return; }
   if (!confirm(`Delete PID ${pid}?`)) return;
 
   setMsg("Deleting...");
@@ -1079,6 +1979,107 @@
     ).slice(0, 10);
   }
 
+  // =========================================================================
+  // HERO CATALOG — full SSR roster (Gen 1-16) + icon filenames
+  // =========================================================================
+  const HERO_CATALOG = [
+    {id:'jeronimo',name:"Jeronimo",faction:'Infantry',gen:1,icon:'jeronimo.png'},
+    {id:'natalia',name:"Natalia",faction:'Infantry',gen:1,icon:'natalia.png'},
+    {id:'molly',name:"Molly",faction:'Lancer',gen:1,icon:'molly.png'},
+    {id:'zinman',name:"Zinman",faction:'Marksman',gen:1,icon:'zinman.png'},
+    {id:'flint',name:"Flint",faction:'Infantry',gen:2,icon:'flint.png'},
+    {id:'philly',name:"Philly",faction:'Lancer',gen:2,icon:'philly.png'},
+    {id:'alonso',name:"Alonso",faction:'Marksman',gen:2,icon:'alonso.png'},
+    {id:'logan',name:"Logan",faction:'Infantry',gen:3,icon:'logan.png'},
+    {id:'mia',name:"Mia",faction:'Lancer',gen:3,icon:'mia.png'},
+    {id:'greg',name:"Greg",faction:'Marksman',gen:3,icon:'greg.png'},
+    {id:'ahmose',name:"Ahmose",faction:'Infantry',gen:4,icon:'ahmose.png'},
+    {id:'reina',name:"Reina",faction:'Lancer',gen:4,icon:'reina.png'},
+    {id:'lynn',name:"Lynn",faction:'Marksman',gen:4,icon:'lynn.png'},
+    {id:'hector',name:"Hector",faction:'Infantry',gen:5,icon:'hector.png'},
+    {id:'norah',name:"Norah",faction:'Lancer',gen:5,icon:'norah.png'},
+    {id:'gwen',name:"Gwen",faction:'Marksman',gen:5,icon:'gwen.png'},
+    {id:'wu_ming',name:"Wu Ming",faction:'Infantry',gen:6,icon:'wu_ming.png'},
+    {id:'renee',name:"Renee",faction:'Lancer',gen:6,icon:'renee.png'},
+    {id:'wayne',name:"Wayne",faction:'Marksman',gen:6,icon:'wayne.png'},
+    {id:'edith',name:"Edith",faction:'Infantry',gen:7,icon:'edith.png'},
+    {id:'gordon',name:"Gordon",faction:'Lancer',gen:7,icon:'gordon.png'},
+    {id:'bradley',name:"Bradley",faction:'Marksman',gen:7,icon:'bradley.png'},
+    {id:'gatot',name:"Gatot",faction:'Infantry',gen:8,icon:'gatot.png'},
+    {id:'sonya',name:"Sonya",faction:'Lancer',gen:8,icon:'sonya.png'},
+    {id:'hendrik',name:"Hendrik",faction:'Marksman',gen:8,icon:'hendrik.png'},
+    {id:'magnus',name:"Magnus",faction:'Infantry',gen:9,icon:'magnus.png'},
+    {id:'fred',name:"Fred",faction:'Lancer',gen:9,icon:'fred.png'},
+    {id:'xura',name:"Xura",faction:'Marksman',gen:9,icon:'xura.png'},
+    {id:'gregory',name:"Gregory",faction:'Infantry',gen:10,icon:'gregory.png'},
+    {id:'freya',name:"Freya",faction:'Lancer',gen:10,icon:'freya.png'},
+    {id:'blanchette',name:"Blanchette",faction:'Marksman',gen:10,icon:'blanchette.png'},
+    {id:'eleonora',name:"Eleonora",faction:'Infantry',gen:11,icon:'eleonora.png'},
+    {id:'lloyd',name:"Lloyd",faction:'Lancer',gen:11,icon:'lloyd.png'},
+    {id:'rufus',name:"Rufus",faction:'Marksman',gen:11,icon:'rufus.png'},
+    {id:'hervor',name:"Hervor",faction:'Infantry',gen:12,icon:'hervor.png'},
+    {id:'karol',name:"Karol",faction:'Marksman',gen:12,icon:'karol.png'},
+    {id:'ligeia',name:"Ligeia",faction:'Lancer',gen:12,icon:'ligeia.png'},
+    {id:'gisela',name:"Gisela",faction:'Infantry',gen:13,icon:'gisela.png'},
+    {id:'flora',name:"Flora",faction:'Lancer',gen:13,icon:'flora.png'},
+    {id:'vulcanus',name:"Vulcanus",faction:'Marksman',gen:13,icon:'vulcanus.png'},
+    {id:'elif',name:"Elif",faction:'Infantry',gen:14,icon:'elif.png'},
+    {id:'dominic',name:"Dominic",faction:'Lancer',gen:14,icon:'dominic.png'},
+    {id:'cara',name:"Cara",faction:'Marksman',gen:14,icon:'cara.png'},
+    {id:'hank',name:"Hank",faction:'Infantry',gen:15,icon:'hank.png'},
+    {id:'estrella',name:"Estrella",faction:'Lancer',gen:15,icon:'estrella.png'},
+    {id:'viveca',name:"Viveca",faction:'Marksman',gen:15,icon:'viveca.png'},
+    {id:'seigel',name:"Seigel",faction:'Infantry',gen:16,icon:'seigel.png'},
+    {id:'ursar',name:"Ursar",faction:'Lancer',gen:16,icon:'ursar.png'},
+    {id:'aisling',name:"Aisling",faction:'Marksman',gen:16,icon:'aisling.png'}
+  ];
+  const HERO_BY_ID = Object.fromEntries(HERO_CATALOG.map(h => [h.id, h]));
+  const FACTION_COLORS = {
+    Infantry: '#d64545',   // red
+    Lancer:   '#3d8bd6',   // blue
+    Marksman: '#4caf50'    // green
+  };
+  const MAX_STARS = 5;
+  const MAX_WIDGET = 10;
+  const MAX_SKILL = 5;
+
+  // Summarize a hero row for display (stars, widget, skill icons)
+  function heroSummary_(row){
+    const s  = Math.max(0, Math.min(MAX_STARS,  Number(row.Stars) || 0));
+    const w  = Math.max(0, Math.min(MAX_WIDGET, Number(row.WidgetLevel) || 0));
+    const s1 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill1) || 0));
+    const s2 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill2) || 0));
+    const s3 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill3) || 0));
+    const s4 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill4) || 0));
+    const s5 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill5) || 0));
+    const s6 = Math.max(0, Math.min(MAX_SKILL, Number(row.Skill6) || 0));
+    return { stars: s, widget: w, skills: [s1, s2, s3, s4, s5, s6] };
+  }
+
+  // Is a hero at max everything? (used for "max only" filter + sort)
+  function isMaxed_(row){
+    const sum = heroSummary_(row);
+    return sum.stars === MAX_STARS && sum.widget === MAX_WIDGET &&
+           sum.skills.every(v => v === MAX_SKILL);
+  }
+
+  // Power score for sort — higher = closer to maxed
+  function heroScore_(row){
+    const s = heroSummary_(row);
+    return s.stars*10 + s.widget*5 + s.skills.reduce((a,b)=>a+b,0);
+  }
+
+  // Skill cap derived from star count:
+  //   0 stars → 0, 1★→2, 2★→3, 3★→4, 4-5★→5
+  function skillCapForStars_(stars){
+    const s = Math.max(0, Math.min(MAX_STARS, Number(stars) || 0));
+    if (s === 0) return 0;
+    if (s === 1) return 2;
+    if (s === 2) return 3;
+    if (s === 3) return 4;
+    return MAX_SKILL; // 4 or 5 stars
+  }
+
   async function loadProfile(){
     const q = document.getElementById("profileSearch").value.trim();
     const msg = document.getElementById("profileMsg");
@@ -1123,6 +2124,7 @@
       return;
     }
     msg.textContent = "";
+    window._currentProfile = res;  // cache for hero editor
     body.innerHTML = renderProfile_(res);
   }
 
@@ -1132,6 +2134,7 @@
     const canyon = Array.isArray(p.canyon) ? p.canyon : [];
     const foundry = Array.isArray(p.foundry) ? p.foundry : [];
     const heroes = Array.isArray(p.heroes) ? p.heroes : [];
+    const playerHeroes = Array.isArray(p.player_heroes) ? p.player_heroes : [];
 
     // Header: avatar + name + PID + location
     const avatarFile = pickAvatar_(m);
@@ -1205,18 +2208,21 @@
         </table>`;
     }
 
-    // Heroes maxed (placeholder for now)
-    let heroesHtml = `<div class="profile-empty">Heroes maxed — coming soon. ${heroes.length ? `(${heroes.length} entries found in sheet)` : ""}</div>`;
+    // Heroes roster (live, from Player_Heroes sheet)
+    const heroesHtml = renderPlayerHeroes_(playerHeroes, m.PID);
 
-    // Canyon & Foundry participation (placeholder)
-    let canyonHtml  = `<div class="profile-empty">Canyon participation — coming soon. ${canyon.length  ? `(${canyon.length} entries found in sheet)`  : ""}</div>`;
-    let foundryHtml = `<div class="profile-empty">Foundry participation — coming soon. ${foundry.length ? `(${foundry.length} entries found in sheet)` : ""}</div>`;
+    // Canyon & Foundry participation — computed from events list
+    const canyonHtml  = participationHtml_(events, "Canyon");
+    const foundryHtml = participationHtml_(events, "Foundry");
 
     return `
       ${roster}
       <div class="profile-sub-title">Event Attendance</div>
       ${eventsHtml}
-      <div class="profile-sub-title">Heroes Maxed</div>
+      <div class="profile-sub-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Heroes</span>
+        <button class="hero-edit-btn" onclick="openHeroEditor('${esc_(m.PID)}')">✎ Edit Heroes</button>
+      </div>
       ${heroesHtml}
       <div class="profile-sub-title">Canyon Participation</div>
       ${canyonHtml}
@@ -1231,6 +2237,356 @@
     document.getElementById("profileSuggestions").innerHTML = "";
     document.getElementById("profileBody").innerHTML = "";
     currentProfilePid = null;
+  }
+
+  // =========================================================================
+  // PARTICIPATION STATS — Canyon / Foundry totals + attendance rate
+  // =========================================================================
+  function participationHtml_(events, type){
+    // Filter to this event type. Only count rows where the player was registered
+    // (so SVS prep/battle score rows won't skew things if they ever got tagged wrong).
+    const mine = (events || []).filter(e =>
+      String(e.event || "").toLowerCase() === type.toLowerCase() &&
+      ["Attended", "No Show", "Registered"].includes(String(e.status || ""))
+    );
+    const total = mine.length;
+    if (total === 0){
+      return `<div class="profile-empty">No ${type} participation recorded yet.</div>`;
+    }
+    const attended  = mine.filter(e => e.status === "Attended").length;
+    const missed    = mine.filter(e => e.status === "No Show").length;
+    const pending   = total - attended - missed; // still Registered (event not yet past)
+    const ratePct   = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+    return `
+      <div class="participation-box">
+        <div class="participation-stats">
+          <div class="part-stat">
+            <div class="part-stat-label">Registered</div>
+            <div class="part-stat-value reg">${total}</div>
+          </div>
+          <div class="part-stat">
+            <div class="part-stat-label">Attended</div>
+            <div class="part-stat-value att">${attended}</div>
+          </div>
+          <div class="part-stat">
+            <div class="part-stat-label">Missed</div>
+            <div class="part-stat-value miss">${missed}</div>
+          </div>
+          ${pending > 0 ? `
+          <div class="part-stat">
+            <div class="part-stat-label">Pending</div>
+            <div class="part-stat-value" style="color:#aab2c0">${pending}</div>
+          </div>` : ""}
+          <div class="part-stat">
+            <div class="part-stat-label">Attendance Rate</div>
+            <div class="part-stat-value rate">${ratePct}%</div>
+          </div>
+        </div>
+        <div class="part-bar-wrap"><div class="part-bar" style="width:${ratePct}%"></div></div>
+      </div>`;
+  }
+
+  // =========================================================================
+  // PLAYER HEROES — profile grid + editor modal
+  // =========================================================================
+
+  // Render the Heroes section on the profile
+  function renderPlayerHeroes_(rows, pid){
+    // rows is an array of { HeroID, Stars, WidgetLevel, Skill1..4 }
+    // Merge with HERO_CATALOG metadata so we can show icon + name + faction
+    const tracked = rows.map(r => {
+      const meta = HERO_BY_ID[String(r.HeroID || "").toLowerCase()];
+      if (!meta) return null;
+      return Object.assign({}, meta, r, heroSummary_(r));
+    }).filter(Boolean);
+
+    if (tracked.length === 0){
+      return `<div class="profile-empty">No heroes tracked yet. Click “Edit Heroes” to add them.</div>`;
+    }
+
+    // Sort: maxed first, then by score desc, then by gen desc
+    tracked.sort((a, b) => {
+      const am = isMaxed_(a) ? 1 : 0, bm = isMaxed_(b) ? 1 : 0;
+      if (am !== bm) return bm - am;
+      const as = heroScore_(a), bs = heroScore_(b);
+      if (as !== bs) return bs - as;
+      return b.gen - a.gen;
+    });
+
+    const cards = tracked.map(h => heroCardHtml_(h)).join("");
+    const maxCount = tracked.filter(isMaxed_).length;
+
+    return `
+      <div class="hero-toolbar">
+        <div class="hero-filter-group" data-filter-group>
+          <button class="hero-filter active" data-filter="max">Max Only (${maxCount})</button>
+          <button class="hero-filter" data-filter="all">Show All (${tracked.length})</button>
+          <button class="hero-filter" data-filter="Infantry"><span class="fdot" style="background:${FACTION_COLORS.Infantry}"></span>Infantry</button>
+          <button class="hero-filter" data-filter="Lancer"><span class="fdot" style="background:${FACTION_COLORS.Lancer}"></span>Lancer</button>
+          <button class="hero-filter" data-filter="Marksman"><span class="fdot" style="background:${FACTION_COLORS.Marksman}"></span>Marksman</button>
+        </div>
+      </div>
+      <div id="heroGrid" class="hero-grid" data-default-filter="max">${cards}</div>
+    `;
+  }
+
+  function heroCardHtml_(h){
+    const s = heroSummary_(h);
+    const maxed = isMaxed_(h);
+    const color = FACTION_COLORS[h.faction] || '#888';
+    const stars = "★".repeat(s.stars) + "☆".repeat(MAX_STARS - s.stars);
+    const skillsPill = s.skills.map(v => `<span class="skill-cell ${v===MAX_SKILL?'skill-max':''}">${v}</span>`).join("");
+    return `
+      <div class="hero-card ${maxed?'hero-maxed':''}"
+           data-faction="${h.faction}"
+           data-maxed="${maxed?'1':'0'}"
+           title="${esc_(h.name)} — Gen ${h.gen} ${h.faction}">
+        <div class="hero-gen-badge" style="background:${color}">G${h.gen}</div>
+        <div class="hero-icon-wrap" style="border-color:${color}">
+          <img class="hero-icon" src="images/heroes/${h.icon}" alt="${esc_(h.name)}"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'hero-icon hero-icon-fallback',textContent:'${esc_(h.name[0])}'}))"/>
+          ${maxed ? '<div class="hero-max-badge">MAX</div>' : ''}
+        </div>
+        <div class="hero-name">${esc_(h.name)}</div>
+        <div class="hero-stars">${stars}</div>
+        <div class="hero-stats">
+          <div class="hero-widget">W<b>${s.widget}</b></div>
+          <div class="hero-skills">${skillsPill}</div>
+        </div>
+      </div>`;
+  }
+
+  // Wire filter chips inside hero grid (delegated click)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".hero-filter");
+    if (!btn) return;
+    const group = btn.closest("[data-filter-group]");
+    if (!group) return;
+    group.querySelectorAll(".hero-filter").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const grid = document.getElementById("heroGrid");
+    if (!grid) return;
+    const f = btn.dataset.filter;
+    grid.querySelectorAll(".hero-card").forEach(card => {
+      let show = true;
+      if (f === "max")           show = card.dataset.maxed === "1";
+      else if (f === "all")      show = true;
+      else                       show = card.dataset.faction === f;
+      card.style.display = show ? "" : "none";
+    });
+  });
+
+  // -------- Hero editor modal --------
+  let _heroEditorState = { pid: null, rows: {} }; // rows keyed by heroId
+
+  async function openHeroEditor(pid){
+    _heroEditorState.pid = pid;
+    _heroEditorState.rows = {};
+    // Seed from current profile if we have it cached
+    const cached = window._currentProfile;
+    if (cached && cached.member && normPid(cached.member.PID) === normPid(pid) && Array.isArray(cached.player_heroes)){
+      cached.player_heroes.forEach(r => {
+        const hid = String(r.HeroID || "").toLowerCase();
+        if (hid) _heroEditorState.rows[hid] = {
+          Stars: Number(r.Stars)||0,
+          WidgetLevel: Number(r.WidgetLevel)||0,
+          Skill1: Number(r.Skill1)||0,
+          Skill2: Number(r.Skill2)||0,
+          Skill3: Number(r.Skill3)||0,
+          Skill4: Number(r.Skill4)||0,
+          Skill5: Number(r.Skill5)||0,
+          Skill6: Number(r.Skill6)||0,
+        };
+      });
+    }
+    // Fresh pull in case the cache is stale
+    try {
+      const res = await apiGet({ view: "player_heroes", pid });
+      if (res.ok && Array.isArray(res.heroes)){
+        res.heroes.forEach(r => {
+          const hid = String(r.HeroID || "").toLowerCase();
+          if (hid) _heroEditorState.rows[hid] = {
+            Stars: Number(r.Stars)||0,
+            WidgetLevel: Number(r.WidgetLevel)||0,
+            Skill1: Number(r.Skill1)||0,
+            Skill2: Number(r.Skill2)||0,
+            Skill3: Number(r.Skill3)||0,
+            Skill4: Number(r.Skill4)||0,
+            Skill5: Number(r.Skill5)||0,
+            Skill6: Number(r.Skill6)||0,
+          };
+        });
+      }
+    } catch (e) { /* ignore, use cache */ }
+
+    renderHeroEditor_();
+    document.getElementById("heroEditorBackdrop").style.display = "flex";
+  }
+
+  function closeHeroEditor(){
+    document.getElementById("heroEditorBackdrop").style.display = "none";
+  }
+
+  function renderHeroEditor_(){
+    const body = document.getElementById("heroEditorBody");
+    const title = document.getElementById("heroEditorTitle");
+    const pid = _heroEditorState.pid;
+    const m = (currentList || []).find(x => normPid(x.PID) === normPid(pid));
+    title.textContent = m ? `Edit Heroes — ${m.Name} (${m.PID})` : `Edit Heroes — PID ${pid}`;
+
+    // Group by gen desc
+    const byGen = {};
+    HERO_CATALOG.forEach(h => { (byGen[h.gen] = byGen[h.gen] || []).push(h); });
+    const gens = Object.keys(byGen).map(Number).sort((a,b)=>b-a);
+
+    body.innerHTML = gens.map(gen => {
+      const cards = byGen[gen].map(h => heroEditorRow_(h)).join("");
+      return `
+        <div class="hero-editor-gen">
+          <div class="hero-editor-gen-title">Generation ${gen}</div>
+          <div class="hero-editor-grid">${cards}</div>
+        </div>`;
+    }).join("");
+  }
+
+  function heroEditorRow_(h){
+    const r = _heroEditorState.rows[h.id] || {};
+    const color = FACTION_COLORS[h.faction] || '#888';
+    const tracked = (Number(r.Stars)||0) > 0 || (Number(r.WidgetLevel)||0) > 0 ||
+                    (Number(r.Skill1)||0) > 0 || (Number(r.Skill2)||0) > 0 ||
+                    (Number(r.Skill3)||0) > 0 || (Number(r.Skill4)||0) > 0 ||
+                    (Number(r.Skill5)||0) > 0 || (Number(r.Skill6)||0) > 0;
+    const cap = skillCapForStars_(r.Stars||0);
+    const capNote = (r.Stars||0) > 0 ? `Skill cap for ${r.Stars||0}★ = ${cap}` : `Set stars to unlock skills`;
+    return `
+      <div class="hero-edit-card ${tracked?'he-tracked':''}" data-hero-id="${h.id}">
+        <div class="he-head" style="border-left-color:${color}">
+          <img src="images/heroes/${h.icon}" alt="${esc_(h.name)}" class="he-icon"
+               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'he-icon he-icon-fb',textContent:'${esc_(h.name[0])}'}))"/>
+          <div>
+            <div class="he-name">${esc_(h.name)}</div>
+            <div class="he-sub">${h.faction} · Gen ${h.gen}</div>
+          </div>
+          <button class="he-max" onclick="heroEditorQuickMax('${h.id}')" title="Set stars\u2605=5, widget=10, all 6 skills=5">MAX</button>
+          <button class="he-clear" onclick="heroEditorClear('${h.id}')" title="Clear / untrack">✕</button>
+        </div>
+        <div class="he-row">
+          <label>Stars</label>
+          <select onchange="heroEditorSet('${h.id}','Stars',this.value)">${selectOptions_(0, MAX_STARS, r.Stars||0)}</select>
+          <label>Widget</label>
+          <select onchange="heroEditorSet('${h.id}','WidgetLevel',this.value)">${selectOptions_(0, MAX_WIDGET, r.WidgetLevel||0)}</select>
+        </div>
+        <div class="he-cap-note">${capNote}</div>
+        <div class="he-row he-skills">
+          <label>S1</label>
+          <select onchange="heroEditorSet('${h.id}','Skill1',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill1||0)}</select>
+          <label>S2</label>
+          <select onchange="heroEditorSet('${h.id}','Skill2',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill2||0)}</select>
+          <label>S3</label>
+          <select onchange="heroEditorSet('${h.id}','Skill3',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill3||0)}</select>
+        </div>
+        <div class="he-row he-skills">
+          <label>S4</label>
+          <select onchange="heroEditorSet('${h.id}','Skill4',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill4||0)}</select>
+          <label>S5</label>
+          <select onchange="heroEditorSet('${h.id}','Skill5',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill5||0)}</select>
+          <label>S6</label>
+          <select onchange="heroEditorSet('${h.id}','Skill6',this.value)">${selectOptions_(0, MAX_SKILL, r.Skill6||0)}</select>
+        </div>
+      </div>`;
+  }
+
+  function selectOptions_(min, max, val){
+    let out = "";
+    for (let i = min; i <= max; i++){
+      out += `<option value="${i}" ${Number(val)===i?'selected':''}>${i}</option>`;
+    }
+    return out;
+  }
+
+  function heroEditorSet(heroId, field, val){
+    const row = _heroEditorState.rows[heroId] || {};
+    row[field] = Number(val) || 0;
+
+    // Auto-apply skill cap based on stars:
+    // 0★→0, 1★→2, 2★→3, 3★→4, 4-5★→5
+    // Raising stars: bump all skills up to the new cap.
+    // Lowering stars: clamp any skills above the new cap back down.
+    if (field === "Stars"){
+      const cap = skillCapForStars_(row.Stars);
+      ["Skill1","Skill2","Skill3","Skill4","Skill5","Skill6"].forEach(k => {
+        const cur = Number(row[k]) || 0;
+        // Auto-set any skill that's lower than the cap up to the cap,
+        // and clamp any skill that's higher than the cap down to it.
+        if (cap === 0) row[k] = 0;
+        else if (cur < cap) row[k] = cap;
+        else if (cur > cap) row[k] = cap;
+      });
+      _heroEditorState.rows[heroId] = row;
+      renderHeroEditor_();
+      return;
+    }
+
+    // For manual skill edits, clamp to the current star cap
+    if (field.startsWith("Skill")){
+      const cap = skillCapForStars_(row.Stars);
+      if (Number(row[field]) > cap) row[field] = cap;
+    }
+
+    _heroEditorState.rows[heroId] = row;
+    const card = document.querySelector(`.hero-edit-card[data-hero-id="${heroId}"]`);
+    if (card){
+      const tracked = row.Stars>0 || row.WidgetLevel>0 || row.Skill1>0 || row.Skill2>0 || row.Skill3>0 || row.Skill4>0 || row.Skill5>0 || row.Skill6>0;
+      card.classList.toggle("he-tracked", tracked);
+    }
+  }
+
+  function heroEditorQuickMax(heroId){
+    _heroEditorState.rows[heroId] = {
+      Stars: MAX_STARS, WidgetLevel: MAX_WIDGET,
+      Skill1: MAX_SKILL, Skill2: MAX_SKILL, Skill3: MAX_SKILL,
+      Skill4: MAX_SKILL, Skill5: MAX_SKILL, Skill6: MAX_SKILL
+    };
+    renderHeroEditor_();
+  }
+
+  function heroEditorClear(heroId){
+    _heroEditorState.rows[heroId] = { Stars:0, WidgetLevel:0, Skill1:0, Skill2:0, Skill3:0, Skill4:0, Skill5:0, Skill6:0 };
+    renderHeroEditor_();
+  }
+
+  async function saveHeroEditor(){
+    const msg = document.getElementById("heroEditorMsg");
+    const pid = _heroEditorState.pid;
+    if (!pid){ msg.textContent = "Missing PID."; return; }
+    if (!roleAllows(currentRole(), "HR")){ msg.style.color="#a00"; msg.textContent = "Sign in as HR or higher to update heroes."; openSignIn(); return; }
+    // Build payload with only rows that are tracked OR were previously tracked (so we can delete)
+    const heroes = Object.entries(_heroEditorState.rows).map(([id, r]) => ({
+      HeroID: id,
+      Stars: Number(r.Stars)||0,
+      WidgetLevel: Number(r.WidgetLevel)||0,
+      Skill1: Number(r.Skill1)||0,
+      Skill2: Number(r.Skill2)||0,
+      Skill3: Number(r.Skill3)||0,
+      Skill4: Number(r.Skill4)||0,
+      Skill5: Number(r.Skill5)||0,
+      Skill6: Number(r.Skill6)||0
+    }));
+    msg.style.color = "#888";
+    msg.textContent = "Saving...";
+    try {
+      const res = await apiPost("player_heroes_save", { PID: pid, heroes });
+      if (!res.ok){ msg.style.color = "#a00"; msg.textContent = res.error || "Save failed."; return; }
+      msg.style.color = "#2a8e4d";
+      msg.textContent = `Saved. Inserted ${res.inserted||0}, updated ${res.updated||0}, removed ${res.deleted||0}.`;
+      // Refresh profile
+      await showProfileForPid(pid);
+      setTimeout(closeHeroEditor, 700);
+    } catch (err){
+      msg.style.color = "#a00";
+      msg.textContent = String(err);
+    }
   }
 
   function loadProfileIntoEditor(){
@@ -1285,8 +2641,499 @@
     }
   }
 
+  // ==================== EVENTS ====================
+  let EVENTS_CACHE = [];
+  let CURRENT_EVENT = null; // { event, registrations, scores }
+
+  // Color themes by event type (used by loadEvents + modals)
+  const EVENT_THEMES = {
+    Canyon:  { grad: "linear-gradient(135deg,#c97a1a,#7a3f00)", pill: { bg:"#ffe2bf", color:"#7a3f00" }, accent: "#c97a1a" },
+    Foundry: { grad: "linear-gradient(135deg,#4b6fb0,#1f3a72)", pill: { bg:"#dce6ff", color:"#1f3a72" }, accent: "#4b6fb0" },
+    SVS:     { grad: "linear-gradient(135deg,#b03a6b,#5a0f3a)", pill: { bg:"#ffd5e6", color:"#5a0f3a" }, accent: "#b03a6b" },
+    _default:{ grad: "linear-gradient(135deg,#3e4a6b,#1e2538)", pill: { bg:"#d7e4ff", color:"#143a91" }, accent: "#4b6fb0" }
+  };
+
+  function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  function fmtDate(iso){
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function computeStatus(ev){
+    // Returns human-friendly status pill label + color class
+    const raw = String(ev.Status || "").trim();
+    if (raw === "Complete") return { label: "Complete", bg: "#cfe8d1", color: "#1a5b2a" };
+    const now = new Date();
+    const d = ev.EventDate ? new Date(ev.EventDate) : null;
+    if (d && !isNaN(d.getTime()) && d < now && d.toDateString() !== now.toDateString()){
+      return { label: "Awaiting Attendance", bg: "#ffeccb", color: "#7a4a00" };
+    }
+    return { label: "Upcoming", bg: "#d7e4ff", color: "#143a91" };
+  }
+
+  // Front-end guard for event actions. Allows EVENT, ADMIN, or MASTER.
+  // HR is a sibling role and cannot modify events — backend enforces the same rule.
+  // Event DELETE is MASTER-only — that's enforced separately by the calling code.
+  function checkEventPassword(){
+    const role = currentRole();
+    if (roleAllows(role, "EVENT")) return true;
+    setMsg("You must be signed in as EVENT, ADMIN, or MASTER to modify events.");
+    openSignIn();
+    return false;
+  }
+
+  async function loadEvents(){
+    const box = document.getElementById("eventsList");
+    const msg = document.getElementById("eventsMsg");
+    msg.textContent = "Loading events\u2026";
+    box.innerHTML = "";
+    const r = await apiGet({ view: "events_list" });
+    if (!r.ok){ msg.textContent = "Error: " + (r.error || ""); return; }
+    EVENTS_CACHE = r.events || [];
+    msg.textContent = `${EVENTS_CACHE.length} event(s).`;
+    if (!EVENTS_CACHE.length){
+      box.innerHTML = '<div class="small" style="opacity:.7; padding:10px;">No events yet. Click “Log New Event” to create one.</div>';
+      return;
+    }
+    let html = '<table style="width:100%; border-collapse:collapse;"><thead><tr>'
+      + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Type</th>'
+      + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Date</th>'
+      + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Time</th>'
+      + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Status</th>'
+      + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Notes</th>'
+      + '<th style="padding:6px; border-bottom:1px solid #333;"></th>'
+      + '</tr></thead><tbody>';
+    EVENTS_CACHE.forEach(ev => {
+      const s = computeStatus(ev);
+      const theme = EVENT_THEMES[ev.Type] || EVENT_THEMES._default;
+      const pill = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; background:${s.bg}; color:${s.color}; font-size:12px;">${esc(s.label)}</span>`;
+      const typeBadge = `<span style="display:inline-block; padding:3px 10px; border-radius:10px; background:${theme.grad}; color:#fff; font-size:12px; font-weight:600;">${esc(ev.Type)}</span>`;
+      let timeCell = esc(ev.EventTime || "");
+      if (ev.Type === "Canyon" || ev.Type === "Foundry"){
+        const l1 = esc(ev.Legion1Time || ""), l2 = esc(ev.Legion2Time || "");
+        timeCell = `<div style="font-size:12px; line-height:1.4;"><b>L1:</b> ${l1 || "—"}<br><b>L2:</b> ${l2 || "—"}</div>`;
+      }
+      html += `<tr>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${typeBadge}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${esc(fmtDate(ev.EventDate))}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${timeCell}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${pill}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${esc(ev.Notes || "")}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right;">`
+        +   `<button onclick="openEventEditor('${esc(ev.EventID)}')">Open</button> `
+        +   `<button class="danger" onclick="deleteEvent('${esc(ev.EventID)}')">Delete</button>`
+        + `</td>`
+        + `</tr>`;
+    });
+    html += '</tbody></table>';
+    box.innerHTML = html;
+  }
+
+  function applyModalTheme(type){
+    const t = EVENT_THEMES[type] || EVENT_THEMES._default;
+    document.getElementById("eventModalHeader").style.background = t.grad;
+    document.getElementById("eventModalType").textContent = type || "";
+  }
+
+  function openModal(title, bodyHtml, footerHtml, type){
+    applyModalTheme(type);
+    document.getElementById("eventModalTitle").textContent = title;
+    document.getElementById("eventModalBody").innerHTML = bodyHtml;
+    document.getElementById("eventModalFooter").innerHTML = footerHtml || "";
+    document.getElementById("eventModalMsg").textContent = "";
+    document.getElementById("eventModalBackdrop").style.display = "flex";
+  }
+  function closeEventModal(){
+    document.getElementById("eventModalBackdrop").style.display = "none";
+    CURRENT_EVENT = null;
+  }
+  function setModalMsg(t){ document.getElementById("eventModalMsg").textContent = t; }
+
+  // ---- New Event modal ----
+  function openNewEventModal(){
+    const today = new Date().toISOString().slice(0,10);
+    const body = `
+      <style>
+        .evt-form label { display:block; font-size:13px; font-weight:600; color:#333; margin-bottom:4px; }
+        .evt-form input, .evt-form select, .evt-form textarea {
+          width:100%; padding:9px 10px; font-size:14px;
+          border:1px solid #c8cad1; border-radius:7px;
+          background:#fff; color:#111;
+          box-sizing:border-box; transition:border-color 0.15s, box-shadow 0.15s;
+        }
+        .evt-form input:focus, .evt-form select:focus, .evt-form textarea:focus {
+          outline:none; border-color:#4b6fb0; box-shadow:0 0 0 3px rgba(75,111,176,0.15);
+        }
+        .evt-form .field { background:#fafbfc; padding:12px; border-radius:8px; border:1px solid #eceef2; }
+        .evt-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .evt-hint { font-size:12px; color:#6b7280; margin-top:4px; font-weight:400; }
+        .evt-type-preview {
+          display:flex; gap:10px; margin-top:8px;
+        }
+        .evt-type-chip {
+          flex:1; padding:10px; border-radius:8px; text-align:center; font-weight:600; font-size:13px;
+          border:2px solid transparent; cursor:pointer; transition:all 0.15s;
+          color:#fff; opacity:0.55;
+        }
+        .evt-type-chip.active { opacity:1; border-color:#111; transform:scale(1.03); }
+        .evt-type-chip.canyon  { background:linear-gradient(135deg,#c97a1a,#7a3f00); }
+        .evt-type-chip.foundry { background:linear-gradient(135deg,#4b6fb0,#1f3a72); }
+        .evt-type-chip.svs     { background:linear-gradient(135deg,#b03a6b,#5a0f3a); }
+      </style>
+      <div class="evt-form" style="display:grid; gap:14px;">
+        <div class="field">
+          <label>Event Type</label>
+          <div class="evt-type-preview">
+            <div class="evt-type-chip canyon"  data-type="Canyon"  onclick="selectEventType('Canyon')">Canyon</div>
+            <div class="evt-type-chip foundry" data-type="Foundry" onclick="selectEventType('Foundry')">Foundry</div>
+            <div class="evt-type-chip svs"     data-type="SVS"     onclick="selectEventType('SVS')">SVS</div>
+          </div>
+          <input type="hidden" id="newEventType" value="" />
+        </div>
+
+        <div class="field">
+          <label>Event Date</label>
+          <input type="date" id="newEventDate" value="${today}" />
+          <div class="evt-hint">When the event happens — used to remind you to mark attendance.</div>
+        </div>
+
+        <!-- Single time (for SVS) -->
+        <div class="field" id="singleTimeField" style="display:none;">
+          <label>Event Time</label>
+          <input type="text" id="newEventTime" placeholder="e.g. 20:00 UTC" />
+        </div>
+
+        <!-- Split times (for Canyon / Foundry) -->
+        <div id="splitTimeField" style="display:none;">
+          <div class="evt-grid2">
+            <div class="field">
+              <label>Legion 1 Time</label>
+              <input type="text" id="newLegion1Time" placeholder="e.g. 19:00 UTC" />
+            </div>
+            <div class="field">
+              <label>Legion 2 Time</label>
+              <input type="text" id="newLegion2Time" placeholder="e.g. 21:00 UTC" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="newEventNotes" rows="2" placeholder="Any relevant details…"></textarea>
+        </div>
+      </div>`;
+    const footer = `
+      <button onclick="closeEventModal()">Cancel</button>
+      <button class="primary" onclick="createNewEvent()">Create Event</button>`;
+    openModal("Log New Event", body, footer);
+  }
+
+  // Called by the type chips
+  function selectEventType(t){
+    document.getElementById("newEventType").value = t;
+    document.querySelectorAll(".evt-type-chip").forEach(el => el.classList.toggle("active", el.getAttribute("data-type") === t));
+    // Toggle time fields
+    const isSplit = (t === "Canyon" || t === "Foundry");
+    document.getElementById("splitTimeField").style.display  = isSplit ? "" : "none";
+    document.getElementById("singleTimeField").style.display = isSplit ? "none" : "";
+    // Also re-theme the modal header to match
+    applyModalTheme(t);
+  }
+
+  async function createNewEvent(){
+    const type = document.getElementById("newEventType").value;
+    const date = document.getElementById("newEventDate").value;
+    const notes = document.getElementById("newEventNotes").value.trim();
+    if (!type){ setModalMsg("Please pick an event type."); return; }
+    if (!date){ setModalMsg("Please pick a date."); return; }
+
+    const payload = { Type: type, EventDate: date, Notes: notes };
+    if (type === "Canyon" || type === "Foundry"){
+      payload.Legion1Time = (document.getElementById("newLegion1Time").value || "").trim();
+      payload.Legion2Time = (document.getElementById("newLegion2Time").value || "").trim();
+    } else {
+      payload.EventTime = (document.getElementById("newEventTime").value || "").trim();
+    }
+
+    if (!checkEventPassword()) return;
+    setModalMsg("Creating\u2026");
+    const r = await apiPost("event_create", payload);
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    await loadEvents();
+    // Jump straight into the registration / score editor for this new event
+    openEventEditor(r.EventID);
+  }
+
+  // ---- Open editor for an existing event ----
+  async function openEventEditor(eventId){
+    setModalMsg("");
+    const r = await apiGet({ view: "event_detail", event_id: eventId });
+    if (!r.ok){ alert("Error: " + (r.error || "")); return; }
+    CURRENT_EVENT = r;
+    applyModalTheme(r.event.Type);
+    if (r.event.Type === "SVS"){
+      renderSvsEditor(r);
+    } else {
+      renderRegEditor(r);
+    }
+  }
+
+  // ---- Canyon / Foundry registration + attendance editor ----
+  function renderRegEditor(detail){
+    const ev = detail.event;
+    const existing = {};
+    (detail.registrations || []).forEach(x => { existing[x.PID] = x; });
+
+    // Roster comes from currentList (loaded by loadAll)
+    const roster = (typeof currentList !== "undefined" && currentList) ? currentList : [];
+    if (!roster.length){
+      openModal(`${ev.Type} — ${fmtDate(ev.EventDate)}`,
+        '<div style="color:#a00;">Roster not loaded. Click “Load Players” first.</div>',
+        `<button onclick="closeEventModal()">Close</button>`);
+      return;
+    }
+
+    // Determine if attendance phase should be visible
+    const now = new Date();
+    const d = ev.EventDate ? new Date(ev.EventDate) : null;
+    const pastEvent = d && !isNaN(d.getTime()) && d.toDateString() !== now.toDateString() && d < now;
+    const showAttendance = pastEvent || String(ev.Status || "") === "Complete";
+
+    const rows = roster.slice().sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||""))).map(m => {
+      const ex = existing[String(m.PID)] || {};
+      const inL1 = ex.Legion === "1";
+      const inL2 = ex.Legion === "2";
+      const att = ex.AttendedRaw === "" ? "yes" : (ex.Attended ? "yes" : "no");
+      return `
+        <tr data-pid="${esc(m.PID)}">
+          <td style="padding:4px;">${esc(m.Name || "")}</td>
+          <td style="padding:4px; opacity:.7;">${esc(m.PID)}</td>
+          <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value=""  ${!inL1 && !inL2 ? "checked" : ""}/></td>
+          <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value="1" ${inL1 ? "checked" : ""}/></td>
+          <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value="2" ${inL2 ? "checked" : ""}/></td>
+          ${showAttendance ? `<td style="padding:4px; text-align:center;"><input type="checkbox" class="attChk" ${att === "yes" ? "checked" : ""}/></td>` : ""}
+        </tr>`;
+    }).join("");
+
+    const theme = EVENT_THEMES[ev.Type] || EVENT_THEMES._default;
+    const l1Time = esc(ev.Legion1Time || ev.EventTime || "");
+    const l2Time = esc(ev.Legion2Time || ev.EventTime || "");
+    const body = `
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+        <div style="flex:1; min-width:180px; padding:10px 12px; border-radius:8px; background:#f7f7fa; border:1px solid #eceef2;">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:#6b7280;">Date</div>
+          <div style="font-size:15px; font-weight:600;">${esc(fmtDate(ev.EventDate))}</div>
+        </div>
+        <div style="flex:1; min-width:180px; padding:10px 12px; border-radius:8px; background:#fff; border:1px solid ${theme.accent};">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:${theme.accent};">Legion 1 Time</div>
+          <div style="font-size:15px; font-weight:600;">${l1Time || '<span style="opacity:.5;">—</span>'}</div>
+        </div>
+        <div style="flex:1; min-width:180px; padding:10px 12px; border-radius:8px; background:#fff; border:1px solid ${theme.accent};">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:${theme.accent};">Legion 2 Time</div>
+          <div style="font-size:15px; font-weight:600;">${l2Time || '<span style="opacity:.5;">—</span>'}</div>
+        </div>
+      </div>
+      <div class="small" style="margin-bottom:8px; color:#555;">
+        Pick <b>Legion 1</b> or <b>Legion 2</b> for each registered player. Leave “—” for players not registered.
+        ${showAttendance ? '<br>Attendance defaults to <b>Yes</b> — uncheck no-shows.' : ""}
+      </div>
+      <input id="regFilter" placeholder="Filter by name or PID\u2026" oninput="filterRegTable()" style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #c8cad1; border-radius:6px; font-size:14px;" />
+      <div style="max-height:50vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
+      <table id="regTable" style="width:100%; border-collapse:collapse; font-size:14px;">
+        <thead style="background:#f2f2f2; position:sticky; top:0;">
+          <tr>
+            <th style="padding:8px; text-align:left;">Name</th>
+            <th style="padding:8px; text-align:left;">PID</th>
+            <th style="padding:8px;">—</th>
+            <th style="padding:8px;">Legion 1</th>
+            <th style="padding:8px;">Legion 2</th>
+            ${showAttendance ? '<th style="padding:8px;">Attended</th>' : ""}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+
+    const footer = `
+      <button onclick="closeEventModal()">Close</button>
+      <button onclick="saveRegistrations()">Save Registrations</button>
+      ${showAttendance ? '<button class="primary" onclick="saveAttendance()">Save Attendance</button>' : ""}`;
+
+    openModal(`${ev.Type} — ${fmtDate(ev.EventDate)}`, body, footer, ev.Type);
+  }
+
+  function filterRegTable(){
+    const q = (document.getElementById("regFilter").value || "").toLowerCase();
+    document.querySelectorAll("#regTable tbody tr").forEach(tr => {
+      const txt = tr.innerText.toLowerCase();
+      tr.style.display = !q || txt.includes(q) ? "" : "none";
+    });
+  }
+
+  async function saveRegistrations(){
+    if (!CURRENT_EVENT) return;
+    if (!checkEventPassword()) return;
+    const regs = [];
+    document.querySelectorAll("#regTable tbody tr").forEach(tr => {
+      const pid = tr.getAttribute("data-pid");
+      const legion = tr.querySelector(`input[name="leg-${pid}"]:checked`)?.value || "";
+      if (!legion) return; // not registered
+      const attChk = tr.querySelector(".attChk");
+      const regObj = { PID: pid, Legion: legion, Registered: true };
+      if (attChk) regObj.Attended = attChk.checked;
+      regs.push(regObj);
+    });
+    setModalMsg(`Saving ${regs.length} registration(s)\u2026`);
+    const r = await apiPost("registrations_save", { EventID: CURRENT_EVENT.event.EventID, Registrations: regs });
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    setModalMsg(`Saved ${r.count} registration(s).`);
+    await loadEvents();
+  }
+
+  async function saveAttendance(){
+    if (!CURRENT_EVENT) return;
+    if (!checkEventPassword()) return;
+    const list = [];
+    document.querySelectorAll("#regTable tbody tr").forEach(tr => {
+      const pid = tr.getAttribute("data-pid");
+      const legion = tr.querySelector(`input[name="leg-${pid}"]:checked`)?.value || "";
+      if (!legion) return;
+      const attChk = tr.querySelector(".attChk");
+      if (!attChk) return;
+      list.push({ PID: pid, Attended: attChk.checked });
+    });
+    setModalMsg(`Saving attendance for ${list.length} player(s)\u2026`);
+    const r = await apiPost("attendance_save", { EventID: CURRENT_EVENT.event.EventID, Attendance: list });
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    setModalMsg(`Updated ${r.updated} attendance row(s).`);
+    await loadEvents();
+  }
+
+  // ---- SVS scores editor ----
+  function renderSvsEditor(detail){
+    const ev = detail.event;
+    const existing = {};
+    (detail.scores || []).forEach(x => { existing[x.PID] = x; });
+
+    const roster = (typeof currentList !== "undefined" && currentList) ? currentList : [];
+    if (!roster.length){
+      openModal(`SVS — ${fmtDate(ev.EventDate)}`,
+        '<div style="color:#a00;">Roster not loaded. Click “Load Players” first.</div>',
+        `<button onclick="closeEventModal()">Close</button>`);
+      return;
+    }
+
+    const rows = roster.slice().sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||""))).map(m => {
+      const ex = existing[String(m.PID)] || {};
+      const prep = ex.PrepScore !== undefined && ex.PrepScore !== null && String(ex.PrepScore) !== "NA" ? ex.PrepScore : "";
+      const batt = ex.BattleScore !== undefined && ex.BattleScore !== null && String(ex.BattleScore) !== "NA" ? ex.BattleScore : "";
+      return `
+        <tr data-pid="${esc(m.PID)}">
+          <td style="padding:4px;">${esc(m.Name || "")}</td>
+          <td style="padding:4px; opacity:.7;">${esc(m.PID)}</td>
+          <td style="padding:4px;"><input class="svsPrep" type="number" value="${esc(prep)}" placeholder="NA" style="width:110px; padding:4px;" /></td>
+          <td style="padding:4px;"><input class="svsBattle" type="number" value="${esc(batt)}" placeholder="NA" style="width:110px; padding:4px;" /></td>
+        </tr>`;
+    }).join("");
+
+    const body = `
+      <div class="small" style="margin-bottom:8px;">
+        <b>SVS</b> — <b>Date:</b> ${esc(fmtDate(ev.EventDate))} &nbsp; <b>Time:</b> ${esc(ev.EventTime || "")}
+      </div>
+      <div class="small" style="margin-bottom:8px; opacity:.8;">
+        Enter Prep and Battle scores. Blank = NA.
+      </div>
+      <input id="svsFilter" placeholder="Filter by name or PID\u2026" oninput="filterSvsTable()" style="width:100%; padding:6px; margin-bottom:8px;" />
+      <div style="max-height:55vh; overflow:auto; border:1px solid #444; border-radius:6px;">
+      <table id="svsTable" style="width:100%; border-collapse:collapse; font-size:14px;">
+        <thead style="background:#f2f2f2; position:sticky; top:0;">
+          <tr>
+            <th style="padding:6px; text-align:left;">Name</th>
+            <th style="padding:6px; text-align:left;">PID</th>
+            <th style="padding:6px; text-align:left;">Prep Score</th>
+            <th style="padding:6px; text-align:left;">Battle Score</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+
+    const footer = `
+      <button onclick="closeEventModal()">Close</button>
+      <button class="primary" onclick="saveSvsScores()">Save Scores</button>`;
+
+    openModal(`SVS — ${fmtDate(ev.EventDate)}`, body, footer, "SVS");
+  }
+
+  function filterSvsTable(){
+    const q = (document.getElementById("svsFilter").value || "").toLowerCase();
+    document.querySelectorAll("#svsTable tbody tr").forEach(tr => {
+      const txt = tr.innerText.toLowerCase();
+      tr.style.display = !q || txt.includes(q) ? "" : "none";
+    });
+  }
+
+  async function saveSvsScores(){
+    if (!CURRENT_EVENT) return;
+    if (!checkEventPassword()) return;
+    const scores = [];
+    document.querySelectorAll("#svsTable tbody tr").forEach(tr => {
+      const pid = tr.getAttribute("data-pid");
+      const prep = tr.querySelector(".svsPrep").value.trim();
+      const batt = tr.querySelector(".svsBattle").value.trim();
+      if (prep === "" && batt === "") return; // skip completely blank rows
+      scores.push({ PID: pid, PrepScore: prep || "NA", BattleScore: batt || "NA" });
+    });
+    setModalMsg(`Saving ${scores.length} score row(s)\u2026`);
+    const r = await apiPost("svs_scores_save", { EventID: CURRENT_EVENT.event.EventID, Scores: scores });
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    setModalMsg(`Saved ${r.count} score row(s).`);
+    await loadEvents();
+  }
+
+  async function deleteEvent(eventId){
+    const ev = EVENTS_CACHE.find(e => e.EventID === eventId);
+    const label = ev ? `${ev.Type} on ${fmtDate(ev.EventDate)}` : eventId;
+    if (!roleAllows(currentRole(), "MASTER")) { alert("Only MASTER can delete events."); openSignIn(); return; }
+    if (!confirm(`Delete event: ${label}?\nThis also removes all registrations / scores for this event.`)) return;
+    const r = await apiPost("event_delete", { EventID: eventId });
+    if (!r.ok){ alert("Error: " + (r.error || "")); return; }
+    await loadEvents();
+  }
+
+  // Expose functions used by inline onclick handlers
+  window.loadEvents = loadEvents;
+  window.openNewEventModal = openNewEventModal;
+  window.createNewEvent = createNewEvent;
+  window.openEventEditor = openEventEditor;
+  window.closeEventModal = closeEventModal;
+  window.saveRegistrations = saveRegistrations;
+  window.saveAttendance = saveAttendance;
+  window.saveSvsScores = saveSvsScores;
+  window.deleteEvent = deleteEvent;
+  window.filterRegTable = filterRegTable;
+  window.filterSvsTable = filterSvsTable;
+  window.selectEventType = selectEventType;
+  // Hero editor
+  window.openHeroEditor = openHeroEditor;
+  window.closeHeroEditor = closeHeroEditor;
+  window.saveHeroEditor = saveHeroEditor;
+  window.heroEditorSet = heroEditorSet;
+  window.heroEditorQuickMax = heroEditorQuickMax;
+  window.heroEditorClear = heroEditorClear;
+  // Role-based access
+  window.openSignIn = openSignIn;
+  window.closeSignIn = closeSignIn;
+  window.submitSignIn = submitSignIn;
+  window.signOut = signOut;
+
   loadConfig();
   initSorting();
+  // Restore role from sessionStorage (or default to VIEWER) and apply UI
+  setRoleUI(currentRole());
   // Wire PID field to live-update the save button mode
   const pidInput = document.getElementById("PID");
   if (pidInput){
@@ -1301,7 +3148,7 @@
 
   updateSaveMode();
   refreshAvatarPreview();
-  loadAll();
+  loadAll().then(() => loadEvents());
 </script>
 
 </body>
