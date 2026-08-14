@@ -7,15 +7,19 @@
   <style>
     :root
     {
-      --bg-deep:#071427;      /* dark polar night */
+      --bg-deep:#071427;
       --bg-mid:#0d1f3a;
       --ice:#4fd1ff;
       --ice-soft:#b9ecff;
       --glow:#4fd1ff44;
-      --frost: rgba(0,0,0,.45);
+      --frost:rgba(0,0,0,.45);
       --border:rgba(255,255,255,.14);
-      --text:#eaf6ff;
-      --muted:#9fb6d4;
+
+      --text:#eef7ff;
+      --text-soft:#d6e8f8;
+      --text-muted:#b8cfe3;
+      --text-dim:#97aec2;
+
       --danger:#ff5c5c;
     }
     body
@@ -38,6 +42,24 @@
       border:1px solid var(--border);
       background: rgba(0,0,0,.25);
       color: var(--text);
+    }
+
+    /* Make the open dropdown list readable. The closed <select> keeps the dark
+       frosted look, but the option list (rendered by the OS) needs solid,
+       high-contrast colors so it isn't light-gray text on gray. */
+    select {
+      background-color:#0d1f3a;
+      color:#eef7ff;
+    }
+    select option,
+    select optgroup {
+      background-color:#0d1f3a;
+      color:#eef7ff;
+    }
+    select option:checked,
+    select option:hover {
+      background-color:#1c3a63;
+      color:#ffffff;
     }
 
     button
@@ -179,7 +201,7 @@
     .profile-label
     {
       font-size: 11px;
-      color: var(--muted);
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: .5px;
     }
@@ -201,7 +223,7 @@
     }
     .profile-empty
     {
-      color: var(--muted);
+      color: var(--text-muted);
       font-style: italic;
       font-size: 13px;
     }
@@ -231,6 +253,25 @@
     .yes-badge { color:#bff5c7; font-weight:700; }
     .no-badge  { color:#ffc8c8; font-weight:700; }
     .na-badge  { color:var(--muted); font-style:italic; }
+    /* Troop tier badges */
+    .tier-badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:700; }
+    .tier-regular { background:#334155; color:#dbe6f5; }
+    .tier-helios  { background:#1f5a8a; color:#cfe6ff; }
+    .tier-exalted { background:#6d4ab8; color:#eddcff; }
+
+    /* Alliance tab bar */
+    .tab-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px; }
+    .tab-btn {
+      padding:6px 14px; border-radius:10px 10px 0 0; border:1px solid transparent;
+      background:rgba(0,0,0,.2); color:var(--text-muted); cursor:pointer; font-size:13px;
+    }
+    .tab-btn:hover { color:var(--text); background:rgba(79,209,255,.12); }
+    .tab-btn.active {
+      background:linear-gradient(180deg, rgba(79,209,255,.35), rgba(79,209,255,.12));
+      color:var(--text); border-color:var(--border); font-weight:700;
+    }
+    .filter-bar { align-items:flex-end; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+    .filter-bar label { display:flex; flex-direction:column; font-size:11px; color:var(--text-dim); gap:2px; }
 
     /* Profile header (avatar + name block) */
     .profile-header
@@ -295,7 +336,22 @@
     .small
     {
       font-size:12px;
-      color:#9fb6d4;
+      color:var(--text-muted);
+    }
+
+    .role-bar .role-label
+    {
+      color:var(--text-dim);
+    }
+
+    .part-stat-label
+    {
+      font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;
+    }
+
+    .hero-stats
+    {
+      display:flex;justify-content:center;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;
     }
 
     .banner
@@ -344,17 +400,16 @@
       background:#13182a; border:1px solid #263154; border-radius:8px;
       font-size:13px;
     }
-    .role-bar .role-label { color:#8a93a6; }
+    .role-bar .role-label { color:var(--text-dim); }
     .role-bar .role-badge {
       display:inline-block; padding:2px 10px; border-radius:999px;
       font-weight:700; font-size:12px; letter-spacing:0.5px;
       background:#263154; color:#cfd6e4;
     }
-    .role-bar .role-badge.VIEWER { background:#2b3144; color:#9fb1d4; }
-    .role-bar .role-badge.EVENT  { background:#2a5c3c; color:#b8e7c8; }
-    .role-bar .role-badge.HR     { background:#5c3a73; color:#e5c8f0; }
+    .role-bar .role-badge.VIEWER { background:#2b3144; color:var(--text-muted); }
+    .role-bar .role-badge.PLAYER { background:#1f5a8a; color:#cfe6ff; }
     .role-bar .role-badge.ADMIN  { background:#8a4a1f; color:#ffcfa8; }
-    .role-bar .role-badge.MASTER { background:#a91d28; color:#ffd7d7; }
+    .role-bar .role-badge.MASTER { background:#6d1f8a; color:#eec8ff; }
     .role-bar button {
       padding:4px 12px; font-size:12px;
     }
@@ -386,6 +441,7 @@
        unless <body> has the matching .role-<Y> class where Y's rank >= X.
        We hide with JS in setRoleUI() for simplicity and explicitness. */
     .role-hidden { display:none !important; }
+    .tab-hidden  { display:none !important; }
   </style>
 </head>
 <body>
@@ -408,8 +464,8 @@
 <div id="signInBackdrop" onclick="if(event.target===this)closeSignIn()">
   <div id="signInModal">
     <h3>Sign in</h3>
-    <div class="small" style="color:#9fb1d4;">Enter your access password. Your role will be detected automatically. You'll stay signed in for 2 hours of activity, or until this browser is closed.</div>
-    <input type="password" id="signInPw" placeholder="Password" autocomplete="off"
+    <div class="small" style="color:var(--text-muted);">Players: enter your PID to edit your own info. Admins/Master: enter your password. Your role is detected automatically. You'll stay signed in for 2 hours of activity, or until this browser is closed.</div>
+    <input type="password" id="signInPw" placeholder="Your PID or admin/master password" autocomplete="off"
       onkeydown="if(event.key==='Enter')submitSignIn();if(event.key==='Escape')closeSignIn()" />
     <div id="signInMsg"></div>
     <div class="signin-actions">
@@ -441,11 +497,39 @@
     <h3 style="margin:0;">Events</h3>
     <div>
       <button onclick="loadEvents()">Refresh</button>
-      <button class="primary" onclick="openNewEventModal()" data-requires="EVENT">+ Log New Event</button>
+      <button class="primary" onclick="openNewEventModal()" data-requires="ADMIN">+ Log New Event</button>
     </div>
+  </div>
+  <div class="tab-bar" id="eventTabs" style="margin-top:12px; margin-bottom:0;">
+    <button class="tab-btn active" data-etab="ALL"     onclick="setEventTab('ALL')">All Events</button>
+    <button class="tab-btn"        data-etab="Canyon"  onclick="setEventTab('Canyon')">Canyon</button>
+    <button class="tab-btn"        data-etab="Foundry" onclick="setEventTab('Foundry')">Foundry</button>
+    <button class="tab-btn"        data-etab="SVS"     onclick="setEventTab('SVS')">SVS</button>
+    <label class="small" style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+      <input type="checkbox" id="evtHideComplete" onchange="renderEventsList()" /> Hide completed
+    </label>
   </div>
   <div id="eventsList" style="margin-top:10px;"></div>
   <div id="eventsMsg" class="small" style="margin-top:6px;"></div>
+</div>
+
+<!-- ==================== SVS PERFORMANCE ==================== -->
+<div class="card">
+  <div class="row" style="justify-content:space-between; align-items:center;">
+    <h3 style="margin:0;">★ SVS Squad &amp; Performance</h3>
+    <div>
+      <label class="small" style="margin-right:10px;">
+        <input type="checkbox" id="svsLbSquadOnly" onchange="renderSvsLeaderboard()" /> Squad only
+      </label>
+      <button onclick="loadSvsLeaderboard()">Load / Refresh</button>
+    </div>
+  </div>
+  <div class="small" style="margin-top:4px; opacity:.8;">
+    Averages skip events a player sat out, so a low turnout does not drag someone's score down.
+    Star players in the roster table to build your squad.
+  </div>
+  <div id="svsLbBox" style="margin-top:10px; overflow:auto;"></div>
+  <div id="svsLbMsg" class="small" style="margin-top:6px;"></div>
 </div>
 
 <!-- Event modals (hidden by default) -->
@@ -599,7 +683,7 @@
      flex-wrap lets the pills drop to a second line on narrow cards instead of being clipped. */
   .hero-stats {
     display:flex; justify-content:center; align-items:center;
-    gap:4px; font-size:11px; color:#aab2c0;
+    gap:4px; font-size:11px; color:var(--text-dim);
     flex-wrap:wrap;
   }
   .hero-widget {
@@ -627,7 +711,7 @@
     gap:10px; margin-bottom:10px;
   }
   .part-stat { text-align:center; }
-  .part-stat-label { font-size:11px; color:#99a1ae; text-transform:uppercase; letter-spacing:0.5px; }
+  .part-stat-label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; }
   .part-stat-value { font-size:22px; font-weight:700; color:#eaeef6; }
   .part-stat-value.reg   { color:#3d8bd6; }
   .part-stat-value.att   { color:#38b464; }
@@ -733,7 +817,7 @@
     </label>
     <button onclick="saveConfig()">Save</button>
     <button onclick="loadAll()">Load Players</button>
-    <button onclick="syncAllFromGame()" title="Pull nickname + furnace level from the game for every player with a PID" style="background:#2a8e4d;">↻ Sync All from Game</button>
+    <button onclick="syncAllFromGame()" title="Fill in the State column for every player and flag any PID the game has rejected during a redemption run. Makes no game API calls." style="background:#2a8e4d;">⚑ Fix States &amp; Check Roster</button>
     <span id="msg" class="small"></span>
     <pre id="debug" class="small" style="white-space:pre-wrap; background:#111; color:#0f0; padding:10px; border-radius:8px; max-height:220px; overflow:auto; margin-top:10px;"></pre>
     <div id="syncProgress" style="display:none; margin-top:8px; padding:10px 12px; background:#e8f5ec; border:1px solid #a9d9bb; border-radius:8px; color:#1e5f34;"></div>
@@ -744,7 +828,7 @@
 <div class="card" id="giftCodesCard" data-requires="ADMIN">
   <h3 style="display:flex; align-items:center; gap:10px;">
     🎁 Gift Codes
-    <span class="small" style="font-weight:400; color:#8a93a6;">Redeem for the whole alliance · Admin only</span>
+    <span class="small" style="font-weight:400; color:var(--text-dim);">Redeem for the whole alliance · Admin only</span>
   </h3>
   <div class="row" style="gap:8px; flex-wrap:wrap;">
     <input id="giftCodeInput" placeholder="Paste gift code (e.g. gogoWOS)" style="min-width:240px; text-transform:none;" />
@@ -756,8 +840,8 @@
   <div id="giftCodeProgress" style="display:none; margin-top:10px; padding:10px 12px; background:#e8f5ec; border:1px solid #a9d9bb; border-radius:8px; color:#1e5f34;"></div>
   <div id="giftCodesHistory" style="margin-top:10px;"></div>
   <details style="margin-top:8px;">
-    <summary class="small" style="cursor:pointer; color:#8a93a6;">About auto-check</summary>
-    <div class="small" style="margin-top:6px; color:#aab2c0; line-height:1.5;">
+    <summary class="small" style="cursor:pointer; color:var(--text-muted);">About auto-check</summary>
+    <div class="small" style="margin-top:6px; color:--text-dim; line-height:1.5;">
       To enable the daily auto-check, open your Apps Script project → <b>Triggers</b> (clock icon) → <b>Add Trigger</b>,
       pick function <code>autoCheckGiftCodes</code>, type <b>Time-driven</b> → <b>Hour timer</b>,
       and set it to run twice a day (e.g. 8am and 8pm). The cron reads the community wiki,
@@ -766,20 +850,25 @@
   </details>
 </div>
 
-<div class="card" data-requires="HR">
-  <h3>Edit Player <span class="small" style="font-weight:400; color:#8a93a6;">· HR, ADMIN, or MASTER</span></h3>
+<div class="card" data-requires="PLAYER">
+  <h3>Edit Player <span class="small" style="font-weight:400; color:var(--text-dim);">· Players edit their own info; Admins edit anyone; only Master can delete a player.</span></h3>
   <div class="row">
-    <button onclick="clearForm()">Clear</button>
+    <button onclick="clearForm()" data-requires="ADMIN">Clear</button>
     <button onclick="retrieveCurrentPid()" title="Load this PID's saved data from the sheet into the form" style="background:#2c6cb0;">⇣ Retrieve</button>
     <button onclick="viewCurrentProfile()" title="Open the full profile for this PID" style="background:#6d4ab8;">👤 View Profile</button>
-    <button onclick="syncCurrentFromGame()" title="Pull nickname + furnace level from the game for the PID in the form" style="background:#2a8e4d;">↻ Sync from Game</button>
-    <button class="danger" onclick="deletePID()" data-requires="MASTER" title="Master only">Delete PID</button>
+    <button onclick="syncCurrentFromGame()" data-requires="ADMIN" title="Save this player's State so gift-code redemption works for them. Name and furnace level can no longer be pulled — the game removed that endpoint." style="background:#2a8e4d;">⚑ Set State</button>
     <span id="syncOneMsg" class="small"></span>
   </div>
 
   <div class="row">
     <input id="PID" placeholder="PID (required)" />
+    <input id="State" placeholder="State (e.g. 603)" title="Server / state number. Required by the game's gift-code API. Defaults to 603." style="max-width:150px" />
     <input id="Name" placeholder="Name" />
+    <label>Alliance
+      <select id="Alliance">
+        <option>TBD</option><option>TBC</option><option>TBA</option><option>Other</option>
+      </select>
+    </label>
     <input id="City_FC_Level" placeholder="City_FC_Level" />
     <input id="Game_Power" placeholder="Game_Power" />
     <input id="Foundry_Power" placeholder="Foundry_Power" />
@@ -825,23 +914,23 @@
   </div>
 
   <div class="row">
-    <label>Helios_Infantry
-      <select id="Helios_Infantry">
-        <option value=""></option><option>Yes</option><option>No</option>
+    <label>Type_Of_Infantry
+      <select id="Type_Of_Infantry">
+        <option value=""></option><option>Regular</option><option>Helios</option><option>Exalted</option>
       </select>
     </label>
     <input id="Infantry_FC_Level" placeholder="Infantry_FC_Level" />
 
-    <label>Helios_Marksmen
-      <select id="Helios_Marksmen">
-        <option value=""></option><option>Yes</option><option>No</option>
+    <label>Type_Of_Marksmen
+      <select id="Type_Of_Marksmen">
+        <option value=""></option><option>Regular</option><option>Helios</option><option>Exalted</option>
       </select>
     </label>
     <input id="Marksmen_FC_Level" placeholder="Marksmen_FC_Level" />
 
-    <label>Helios_Lancer
-      <select id="Helios_Lancer">
-        <option value=""></option><option>Yes</option><option>No</option>
+    <label>Type_Of_Lancers
+      <select id="Type_Of_Lancers">
+        <option value=""></option><option>Regular</option><option>Helios</option><option>Exalted</option>
       </select>
     </label>
     <input id="Lancer_FC_Level" placeholder="Lancer_FC_Level" />
@@ -849,43 +938,99 @@
 
   <div class="row">
     <button id="saveBtn" onclick="upsert()">Add / Update</button>
+    <button class="warn" style="background:#b02a2a; color:#fff;" onclick="deletePID()" data-requires="MASTER" title="Master only — permanently deletes this player">Delete PID</button>
     <span id="saveMode" class="small"></span>
   </div>
 </div>
 
 <div class="card">
-  <h3>All Players</h3>
+  <h3>Players</h3>
+
+  <!-- Alliance tabs -->
+  <div class="tab-bar" id="allianceTabs">
+    <button class="tab-btn active" data-tab="ALL"     onclick="setTab('ALL')">All Players</button>
+    <button class="tab-btn"        data-tab="TBD"     onclick="setTab('TBD')">TBD Members</button>
+    <button class="tab-btn"        data-tab="TBC"     onclick="setTab('TBC')">TBC Members</button>
+    <button class="tab-btn"        data-tab="TBA"     onclick="setTab('TBA')">TBA Members</button>
+    <button class="tab-btn"        data-tab="OTHER"   onclick="setTab('OTHER')">Other Alliances</button>
+    <button class="tab-btn"        data-tab="SQUAD"   onclick="setTab('SQUAD')" title="Players starred as part of the SVS Squad">★ SVS Squad</button>
+    <button class="tab-btn"        data-tab="ARCHIVE" onclick="setTab('ARCHIVE')">Archive</button>
+  </div>
+
+  <!-- Filter controls -->
+  <div class="row filter-bar">
+    <label>Troop type
+      <select id="filterTroop" onchange="applyTabAndFilters()">
+        <option value="ANY">Any type</option>
+        <option value="ALL3">All 3 types</option>
+        <option value="Infantry">Infantry</option>
+        <option value="Marksmen">Marksmen</option>
+        <option value="Lancers">Lancers</option>
+      </select>
+    </label>
+    <label>Tier
+      <select id="filterTier" onchange="applyTabAndFilters()">
+        <option value="ANY">Any tier</option>
+        <option value="HELIOS_OR_EXALTED">Helios or Exalted</option>
+        <option value="Helios">Helios only</option>
+        <option value="Exalted">Exalted only</option>
+      </select>
+    </label>
+    <input id="filterSearch" placeholder="Search name or PID" oninput="applyTabAndFilters()" style="min-width:200px" />
+    <button onclick="clearFilters()" class="subtle">Clear filters</button>
+    <span id="tabCount" class="small"></span>
+  </div>
+
   <div class="row btn-group">
     <button onclick="resetToSheetOrder()">Reset to Sheet Order</button>
     <span id="selCount" class="small">0 selected</span>
     <div class="spacer"></div>
-    <button class="warn"   onclick="archiveSelected()" data-requires="ADMIN"  title="Admin or Master">Archive Selected</button>
-    <button class="danger" onclick="deleteSelected()"  data-requires="MASTER" title="Master only">Delete Selected</button>
+    <button id="btnArchiveSel" class="warn"   onclick="archiveSelected()" data-requires="ADMIN"  title="Admin only">Archive Selected</button>
+    <button id="btnRestoreSel" class="warn tab-hidden" onclick="restoreSelected()" data-requires="ADMIN" style="background:#1f7a4d; color:#fff;" title="Admin only — move selected players back to the roster as TBD">Restore Selected</button>
+    <button id="btnDeleteSel" class="warn"   onclick="deleteSelected()" data-requires="MASTER" style="background:#b02a2a; color:#fff;" title="Master only — permanently deletes selected players">Delete Selected</button>
   </div>
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr>
         <th class="sel-col"><input type="checkbox" id="selAll" onclick="toggleSelectAll(this)" title="Select all" /></th>
+        <th data-sort="SVS_Squad" title="SVS Squad — click a star to add or remove a player">★</th>
         <th data-sort="Name">Name</th>
         <th data-sort="PID">PID</th>
-        <th data-sort="Game_Power">Game Power</th>
+        <th data-sort="State">State</th>
+        <th data-sort="Alliance">Alliance</th>
         <th data-sort="City_FC_Level">City FC</th>
-        <th data-sort="Foundry_Power">Foundry</th>
+        <th data-sort="Type_Of_Infantry">Infantry</th>
+        <th data-sort="Infantry_FC_Level">Inf FC</th>
+        <th data-sort="Type_Of_Marksmen">Marksmen</th>
+        <th data-sort="Marksmen_FC_Level">Mrk FC</th>
+        <th data-sort="Type_Of_Lancers">Lancers</th>
+        <th data-sort="Lancer_FC_Level">Lan FC</th>
+        <th data-sort="Game_Power">Game Power</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+  </div>
 </div>
 
 <script>
   // These MUST match your sheet headers exactly:
   const FIELDS = [
-    "Name","PID","City_FC_Level","Game_Power","Foundry_Power",
-    "Helios_Infantry","Infantry_FC_Level",
-    "Helios_Marksmen","Marksmen_FC_Level",
-    "Helios_Lancer","Lancer_FC_Level",
-    "Gender","Location","JoinDate","Avatar"
+    "Name","PID","Alliance","City_FC_Level","Game_Power","Foundry_Power",
+    "Type_Of_Infantry","Infantry_FC_Level",
+    "Type_Of_Marksmen","Marksmen_FC_Level",
+    "Type_Of_Lancers","Lancer_FC_Level",
+    "Gender","Location","JoinDate","Avatar","State"
   ];
+
+  // Default state/server for this alliance. Gift-code redemption now requires it.
+  const DEFAULT_STATE = "603";
+
+  // Troop tier options for the Type_Of_* columns.
+  const TROOP_TIERS = ["Regular","Helios","Exalted"];
+  // Alliance options. New members default to TBD (see backend upsert).
+  const ALLIANCE_OPTS = ["TBD","TBC","TBA","Other"];
 
   // Avatar gallery — filenames must exist in images/ folder
   const AVATARS_MALE   = ["Kerol.jpg","Greg.jpg","Jeronimo.jpg","Wu-Ming.jpg"];
@@ -932,7 +1077,12 @@
   // ROLE-BASED ACCESS — session manager
   //
   // The user signs in once with a password. The backend identifies which
-  // role that password unlocks (VIEWER / EVENT / HR / ADMIN / MASTER).
+  // role that credential unlocks:
+  //   VIEWER  - not signed in (read-only)
+  //   PLAYER  - signed in with an existing PID; can edit only their own info
+  //   ADMIN   - signed in with the admin password; can edit all players + events
+  //   MASTER  - signed in with the master password; everything ADMIN can do,
+  //             plus delete players and delete events
   // We keep the password + detected role in sessionStorage so it:
   //   - clears when the browser/tab is closed
   //   - persists across reloads of the same tab
@@ -941,18 +1091,21 @@
   const SESSION_KEY = "tbd_alliance_session";
   const SESSION_INACTIVITY_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-  const ROLE_RANK = { VIEWER:0, EVENT:1, HR:2, ADMIN:3, MASTER:4 };
+  const ROLE_RANK = { VIEWER:0, PLAYER:1, ADMIN:2, MASTER:3 };
   // What a given signed-in role is ALLOWED to do (matches backend requireRole_).
-  const ROLE_ALLOWS = {
-    VIEWER: new Set(["VIEWER","EVENT","HR","ADMIN","MASTER"]),
-    EVENT:  new Set(["EVENT","ADMIN","MASTER"]),
-    HR:     new Set(["HR","ADMIN","MASTER"]),
+  // Keyed by the MINIMUM role an action requires; value is the set of roles that satisfy it.
+  // MASTER satisfies every requirement (it outranks ADMIN).
+  const ROLE_ALLOWS = 
+  {
+    VIEWER: new Set(["VIEWER","PLAYER","ADMIN","MASTER"]),
+    PLAYER: new Set(["PLAYER","ADMIN","MASTER"]),
     ADMIN:  new Set(["ADMIN","MASTER"]),
     MASTER: new Set(["MASTER"])
   };
 
   // Returns true if the current role satisfies the minimum role.
-  function roleAllows(currentRole, minRole) {
+  function roleAllows(currentRole, minRole) 
+  {
     const set = ROLE_ALLOWS[minRole];
     if (!set) return false;
     return set.has(currentRole);
@@ -973,10 +1126,17 @@
     } catch (e) { return null; }
   }
 
-  function saveSession(role, password) {
-    const s = { role, password, lastActivity: Date.now() };
+  function saveSession(role, password, playerPid, playerName) 
+  {
+    const s = { role, password, playerPid, playerName, lastActivity: Date.now() };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
     return s;
+  }
+
+  function currentPlayerName() 
+  {
+    const s = loadSession();
+    return s ? (s.playerName || "") : "";
   }
 
   function touchSession() {
@@ -1015,11 +1175,12 @@
     document.getElementById("signInBackdrop").style.display = "none";
   }
 
-  async function submitSignIn() {
+  async function submitSignIn() 
+  {
     const pw = document.getElementById("signInPw").value || "";
     const msg = document.getElementById("signInMsg");
     if (!pw) { msg.style.color = "#ffb0b0"; msg.textContent = "Enter a password."; return; }
-    msg.style.color = "#9fb1d4"; msg.textContent = "Checking\u2026";
+    msg.style.color = "var(--text-muted)"; msg.textContent = "Checking\u2026";
     const res = await apiGet({ view: "whoami", password: pw });
     if (!res.ok) {
       msg.style.color = "#ffb0b0"; msg.textContent = "Error: " + (res.error || "unknown");
@@ -1029,7 +1190,7 @@
       msg.style.color = "#ffb0b0"; msg.textContent = "Password not recognized.";
       return;
     }
-    saveSession(res.role, pw);
+    saveSession(res.role, pw, res.playerPid || "", res.playerName || "");
     setRoleUI(res.role);
     closeSignIn();
     setMsg("Signed in as " + res.role + ".");
@@ -1043,6 +1204,9 @@
       badge.textContent = role;
       badge.className = "role-badge " + role;
     }
+    const who = currentPlayerName();
+    badge.textContent = who ? `${role} · ${who}` : role;
+
     // Sign in / sign out buttons
     const signInBtn  = document.getElementById("signInBtn");
     const signOutBtn = document.getElementById("signOutBtn");
@@ -1066,6 +1230,9 @@
       if (roleAllows(role, need)) el.classList.remove("role-hidden");
       else el.classList.add("role-hidden");
     });
+
+    // Lock the PID field to the player's own PID (players) or free it (admins).
+    try { applyPlayerEditingState(); } catch (e) {}
   }
 
   // Activity listeners — refresh lastActivity on user input
@@ -1095,11 +1262,167 @@
       typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
-  let currentList = [];
-  let sheetDefaultOrder = [];
+  let currentList = [];        // the currently RENDERED list (after tab + filters + sort)
+  let sheetDefaultOrder = [];  // active roster, in sheet order (from loadAll)
+  let archiveList = [];        // archived members (lazy-loaded when Archive tab is first opened)
+  let archiveLoaded = false;
   let currentProfilePid = null;
 
+  // Alliance tab + filter state
+  let activeTab = "ALL";       // ALL | TBD | TBC | TBA | OTHER | SQUAD | ARCHIVE
+
   let sortState = { key: null, dir: 1 };
+
+  // Normalize an alliance value into one of TBD / TBC / OTHER for tab grouping.
+  // Blank/unknown alliances count as OTHER (except the dedicated tabs).
+  function allianceGroup_(m){
+    const a = String(m.Alliance || "").trim().toUpperCase();
+    if (a === "TBD") return "TBD";
+    if (a === "TBC") return "TBC";
+    if (a === "TBA") return "TBA";
+    return "OTHER";
+  }
+
+  // Is this player starred as part of the SVS Squad?
+  // The SVS_Squad column may not exist yet on older sheets — treat missing as false.
+  function isSquad_(m){
+    const v = String(m.SVS_Squad ?? "").trim().toLowerCase();
+    return v === "yes" || v === "true" || v === "y" || v === "1";
+  }
+
+  // Normalize a troop tier cell, translating legacy Yes/No to Helios/Regular.
+  function troopTier_(v){
+    const s = String(v ?? "").trim().toLowerCase();
+    if (s === "yes") return "helios";
+    if (s === "no")  return "regular";
+    return s; // "regular" | "helios" | "exalted" | "" | "na"
+  }
+
+  // Read a troop-type cell for one of "Infantry" | "Marksmen" | "Lancers",
+  // tolerating both the new Type_Of_* headers and the legacy Helios_* headers
+  // (e.g. an Archive row that predates the migration). Returns the raw cell value.
+  function troopCell_(m, kind){
+    const map = {
+      Infantry: ["Type_Of_Infantry", "Helios_Infantry"],
+      Marksmen: ["Type_Of_Marksmen", "Helios_Marksmen"],
+      Lancers:  ["Type_Of_Lancers", "Helios_Lancer", "Helios_Lancers"]
+    };
+    const keys = map[kind] || [];
+    for (const k of keys){
+      if (m[k] !== undefined && m[k] !== null && String(m[k]).trim() !== "") return m[k];
+    }
+    return "";
+  }
+
+  // Does a member match the current troop-type + tier filter?
+  function matchesTroopFilter_(m){
+    const troop = document.getElementById("filterTroop")?.value || "ANY";
+    const tier  = document.getElementById("filterTier")?.value  || "ANY";
+    if (troop === "ANY" && tier === "ANY") return true;
+
+    const byType = {
+      Infantry: troopTier_(troopCell_(m, "Infantry")),
+      Marksmen: troopTier_(troopCell_(m, "Marksmen")),
+      Lancers:  troopTier_(troopCell_(m, "Lancers"))
+    };
+
+    // Which troop types must satisfy the tier requirement?
+    let typesToCheck;
+    if (troop === "ANY")      typesToCheck = ["Infantry","Marksmen","Lancers"]; // any one is enough
+    else if (troop === "ALL3") typesToCheck = ["Infantry","Marksmen","Lancers"]; // all must match
+    else typesToCheck = [troop];
+
+    const tierOk = (t) => {
+      if (tier === "ANY") return t === "helios" || t === "exalted" || t === "regular";
+      if (tier === "HELIOS_OR_EXALTED") return t === "helios" || t === "exalted";
+      return t === tier.toLowerCase(); // "Helios" or "Exalted"
+    };
+
+    if (troop === "ALL3") return typesToCheck.every(k => tierOk(byType[k]));
+    return typesToCheck.some(k => tierOk(byType[k]));
+  }
+
+  // The source list for the active tab (archive tab uses archiveList).
+  function tabSourceList_(){
+    if (activeTab === "ARCHIVE") return archiveList;
+    return sheetDefaultOrder;
+  }
+
+  // Switch tabs. Loads the archive lazily the first time it's opened.
+  async function setTab(tab){
+    activeTab = tab;
+    document.querySelectorAll("#allianceTabs .tab-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.tab === tab);
+    });
+    // Selecting across tabs would be confusing — clear selection on tab change.
+    clearSelection();
+
+    // Swap the bulk-action buttons for the tab context:
+    //  - Archive tab: only "Restore Selected" makes sense.
+    //  - Any other tab: "Archive Selected" + "Delete Selected".
+    const isArchive = (tab === "ARCHIVE");
+    const btnArchive = document.getElementById("btnArchiveSel");
+    const btnDelete  = document.getElementById("btnDeleteSel");
+    const btnRestore = document.getElementById("btnRestoreSel");
+    if (btnArchive) btnArchive.classList.toggle("tab-hidden", isArchive);
+    if (btnDelete)  btnDelete.classList.toggle("tab-hidden", isArchive);
+    if (btnRestore) btnRestore.classList.toggle("tab-hidden", !isArchive);
+
+    if (tab === "ARCHIVE" && !archiveLoaded){
+      setMsg("Loading archive…");
+      const res = await apiGet({ view: "archive" });
+      if (res.ok){ archiveList = res.members || []; archiveLoaded = true; setMsg(`Loaded ${archiveList.length} archived player(s).`); }
+      else setMsg(res.error || "Error loading archive");
+    }
+    // Reset sort when changing tabs so we start from natural order.
+    sortState.key = null; sortState.dir = 1; updateHeaderArrows();
+    applyTabAndFilters();
+  }
+
+  // Recompute currentList from the active tab + filters (+ current sort) and render.
+  function applyTabAndFilters(){
+    let list = tabSourceList_().slice();
+
+    // Tab (alliance) filter — not applied to ALL or ARCHIVE.
+    if (activeTab === "TBD" || activeTab === "TBC" || activeTab === "TBA" || activeTab === "OTHER"){
+      list = list.filter(m => allianceGroup_(m) === activeTab);
+    }
+
+    // SVS Squad tab: only starred players.
+    if (activeTab === "SQUAD"){
+      list = list.filter(isSquad_);
+    }
+
+    // Troop type + tier filter (applies to every tab, including ALL/ARCHIVE).
+    list = list.filter(matchesTroopFilter_);
+
+    // Free-text search on name/PID.
+    const q = (document.getElementById("filterSearch")?.value || "").trim().toLowerCase();
+    if (q){
+      list = list.filter(m =>
+        String(m.Name || "").toLowerCase().includes(q) ||
+        normPid(m.PID).toLowerCase().includes(normPid(q).toLowerCase())
+      );
+    }
+
+    // Keep the active column sort if one is set.
+    if (sortState.key){
+      list.sort((a,b) => sortState.dir * compareValues(a,b,sortState.key));
+    }
+
+    currentList = list;
+    renderTable(currentList);
+
+    const countEl = document.getElementById("tabCount");
+    if (countEl) countEl.textContent = `${currentList.length} shown`;
+  }
+
+  function clearFilters(){
+    const t = document.getElementById("filterTroop"); if (t) t.value = "ANY";
+    const r = document.getElementById("filterTier");  if (r) r.value = "ANY";
+    const s = document.getElementById("filterSearch"); if (s) s.value = "";
+    applyTabAndFilters();
+  }
 
   function parseNumberLike(v)
   {
@@ -1148,12 +1471,17 @@
     if (sortState.key === key) sortState.dir *= -1;
     else { sortState.key = key; sortState.dir = 1; }
 
-    currentList = [...currentList].sort((a,b) =>
-      sortState.dir * compareValues(a,b,key)
-    );
-
-    renderTable(currentList);
+    // Re-run the tab + filter pipeline (which applies the current sort).
+    applyTabAndFilters();
     updateHeaderArrows();
+  }
+
+  function canEditPid(targetPid)
+  {
+    const role = currentRole();
+    if (roleAllows(role, 'ADMIN')) return true;
+    if (role === 'PLAYER' && normPid(targetPid) === currentPlayerPid()) return true;
+    return false;
   }
 
   function updateHeaderArrows()
@@ -1222,141 +1550,161 @@
       if (!url) return { ok: false, error: "Missing API URL" };
 
       // Auto-attach the session password for role-gated endpoints.
-      // Caller can still override by passing an explicit admin_password in payload.
+      // For an ADMIN this is the admin password; for a PLAYER it is their own PID
+      // (which is how the backend authorizes self-edits). Caller can still override
+      // by passing an explicit adminpassword in the payload.
       const pw = currentPassword();
       const finalPayload = Object.assign({}, payload || {});
-      if (pw && !finalPayload.admin_password && !finalPayload.password && !finalPayload.role_password) {
-        finalPayload.admin_password = pw;
+      if (pw && !finalPayload.adminpassword && !finalPayload.password && !finalPayload.rolepassword) {
+        finalPayload.adminpassword = pw;
       }
 
-      const u = new URL(url);
-      u.searchParams.set("key", key);
-      u.searchParams.set("action", action);
-      u.searchParams.set("payload", JSON.stringify(finalPayload));
-
-      const r = await fetch(u.toString());
+      // POST the request as a JSON body. We use Content-Type text/plain so the
+      // browser does NOT send a CORS preflight (OPTIONS) request — Apps Script
+      // web apps don't answer preflight, which otherwise shows up as
+      // "Failed to fetch". Large payloads (e.g. a full hero list) also can't fit
+      // in a URL query string, so a POST body is required for those to work.
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ key: key, action: action, payload: finalPayload }),
+        redirect: "follow"
+      });
       return await r.json();
     } catch (e) {
       return { ok: false, error: e.message };
     }
   }
 
-  // ---- Game data sync ----
+  // ---- Player state ----
+  // Century Games removed /api/player in 2026, so nickname and furnace level can
+  // no longer be pulled from the game. What we can still do — and what gift-code
+  // redemption now requires — is record each player's State (server number).
   async function syncCurrentFromGame(){
     const pid = (document.getElementById("PID").value || "").trim();
+    const stateEl = document.getElementById("State");
+    const state = ((stateEl && stateEl.value) || "").replace(/[^0-9]/g, "").trim() || DEFAULT_STATE;
     const msg = document.getElementById("syncOneMsg");
     if (!pid){ msg.style.color = "#a00"; msg.textContent = "Enter or load a PID first."; return; }
-    if (!roleAllows(currentRole(), "HR")){
+    if (!roleAllows(currentRole(), "ADMIN")){
       msg.style.color = "#a00";
-      msg.textContent = "Sign in as HR or higher to sync from the game.";
+      msg.textContent = "Sign in as ADMIN to change a player's state.";
       openSignIn();
       return;
     }
     msg.style.color = "#555";
-    msg.textContent = "Syncing from game…";
-    const res = await apiPost("sync_game_info", { PID: pid });
+    msg.textContent = "Saving state…";
+    const res = await apiPost("sync_game_info", { PID: pid, State: state });
     if (!res.ok){
       msg.style.color = "#a00";
-      msg.textContent = "Sync failed: " + (res.error || "unknown");
+      msg.textContent = "Failed: " + (res.error || "unknown");
       return;
     }
-    // Update the form fields in place so the user sees the change
-    if (res.newName) {
-      const nameEl = document.getElementById("Name");
-      if (nameEl) nameEl.value = res.newName;
-    }
-    if (res.newFurnace) {
-      const fcEl = document.getElementById("City_FC_Level");
-      if (fcEl) fcEl.value = res.newFurnace;
-    }
-    const parts = [];
-    if (res.nameChanged)    parts.push(`Name: ${res.oldName || '(blank)'} → ${res.newName}`);
-    if (res.furnaceChanged) parts.push(`Furnace: ${res.oldFurnace || 0} → ${res.newFurnace}`);
+    if (stateEl) stateEl.value = res.state || state;
     msg.style.color = "#2a8e4d";
-    msg.textContent = parts.length ? ("Updated — " + parts.join(" · ")) : "Already up to date.";
-    // Refresh the roster cache so the bottom table and profile show fresh values
+    msg.textContent = res.stateChanged
+      ? `State set to ${res.state} (was ${res.oldState || "blank"}). Name and furnace level are manual now — the game no longer publishes them.`
+      : `State already ${res.state}. Name and furnace level are manual now — the game no longer publishes them.`;
     try { await loadAll(); } catch (e) {}
   }
 
+  // Fills the State column for the whole roster and reports which PIDs the game
+  // has rejected during past redemption runs. Costs zero game API calls, so it
+  // is instant and cannot trip the rate limit.
+  // ---- Dismissible result banners ----
+  // The green/red result panels stay put until you close them. The X is only
+  // added on the final state of a run, never mid-run, so you cannot close a
+  // banner while work is still in flight.
+  function showBannerResult(boxId, innerHtml, kind){
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    const tone = kind === "error"
+      ? { bg:"#fde7e7", border:"#e0a0a0", color:"#8a1f1f" }
+      : { bg:"#e8f5ec", border:"#a9d9bb", color:"#1e5f34" };
+    box.style.background = tone.bg;
+    box.style.borderColor = tone.border;
+    box.style.color = tone.color;
+    box.style.display = "block";
+    box.style.position = "relative";
+    box.innerHTML =
+      `<button type="button" class="bannerClose" onclick="dismissBanner('${boxId}')" title="Close (Esc)"
+               aria-label="Close"
+               style="position:absolute; top:6px; right:8px; width:24px; height:24px; line-height:1;
+                      padding:0; border:none; background:transparent; color:inherit; opacity:.6;
+                      font-size:18px; cursor:pointer;">&times;</button>` +
+      `<div style="padding-right:26px;">${innerHtml}</div>`;
+  }
+
+  // Hide and wipe a banner so an old result never flashes on the next run.
+  function dismissBanner(boxId){
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    box.style.display = "none";
+    box.innerHTML = "";
+  }
+
+  // Close every open banner (used by Escape).
+  function dismissAllBanners(){
+    ["syncProgress","giftCodeProgress"].forEach(id => {
+      const box = document.getElementById(id);
+      // Only close banners that have actually finished (i.e. show an X).
+      if (box && box.style.display !== "none" && box.querySelector(".bannerClose")) dismissBanner(id);
+    });
+  }
+
+  // The "manual now" explainer only needs reading once.
+  const MANUAL_NOTE_KEY = "wos_manual_note_dismissed";
+  function manualNoteHtml_(){
+    if (localStorage.getItem(MANUAL_NOTE_KEY) === "1") return "";
+    return `<div id="manualNote" style="position:relative; margin-top:8px; font-size:12px; padding:8px 26px 8px 10px; background:#fff6e0; border:1px solid #e0c98a; border-radius:6px; color:#6b4e0e;">` +
+      `<button type="button" onclick="dismissManualNote()" title="Don't show this again" aria-label="Dismiss"
+               style="position:absolute; top:4px; right:6px; width:20px; height:20px; line-height:1; padding:0;
+                      border:none; background:transparent; color:inherit; opacity:.6; font-size:16px; cursor:pointer;">&times;</button>` +
+      `<b>Name and Furnace Level are manual now.</b> Century Games removed the player-info endpoint (<code>/api/player</code> returns 404), so there is no longer any public source for a player's nickname or furnace level. Gift-code redemption still works and now needs each player's State instead.` +
+      `</div>`;
+  }
+
+  function dismissManualNote(){
+    localStorage.setItem(MANUAL_NOTE_KEY, "1");
+    const el = document.getElementById("manualNote");
+    if (el) el.remove();
+  }
+
   async function syncAllFromGame(){
-    if (!roleAllows(currentRole(), "HR")){
-      setMsg("Sign in as HR, ADMIN, or MASTER to sync the roster.");
+    if (!roleAllows(currentRole(), "ADMIN")){
+      setMsg("Sign in as ADMIN to update the roster.");
       openSignIn();
       return;
     }
     const box = document.getElementById("syncProgress");
-    const list = (currentList || []).filter(m => String(m.PID || "").trim() && String(m.PID).toLowerCase() !== "na");
-    if (list.length === 0){
-      if (!confirm("No players loaded. Click Load Players first, or continue anyway to sync the full roster on the server?")) return;
-    } else if (!confirm(`Sync ${list.length} players from the game?\n\nThis takes ~${Math.ceil(list.length*1.2/60)} minute(s) at ~1 request/second to respect the game's rate limit. Name and Furnace Level will be auto-updated. All other fields stay untouched.`)) {
+    const input = prompt("Which state is this alliance in?", DEFAULT_STATE);
+    if (input === null) return;
+    const state = String(input).replace(/[^0-9]/g, "").trim() || DEFAULT_STATE;
+
+    box.style.display = "block";
+    box.style.background = "#e8f5ec"; box.style.borderColor = "#a9d9bb"; box.style.color = "#1e5f34";
+    box.innerHTML = "Updating roster…";
+
+    const res = await apiPost("sync_game_all", { state: state });
+    if (!res.ok){
+      showBannerResult("syncProgress", "Failed: " + esc_(res.error || "unknown"), "error");
       return;
     }
 
-    box.style.display = "block";
-    box.innerHTML = "Starting sync… this can take a minute for large alliances.";
+    let html = `<div style="font-weight:700; margin-bottom:4px;">Roster updated</div>`;
+    html += `<div>Players: <b>${res.total || 0}</b> · State written for <b style="color:#2a8e4d">${res.updated || 0}</b> · Already correct <b>${res.unchanged || 0}</b></div>`;
+    html += `<div style="margin-top:3px;">Confirmed by a past redemption: <b>${res.confirmed || 0}</b> · Rejected by the game: <b style="color:#a00">${res.flagged || 0}</b> · Never tested: <b>${res.unknown || 0}</b></div>`;
 
-    // Run on the server in one shot (it paces internally). Apps Script allows ~6 min per request,
-    // so ~300 players is the safe upper bound; we chunk if needed.
-    let startIndex = 0;
-    let totalUpdated = 0, totalErrors = 0, totalUnchanged = 0, totalProcessed = 0, totalInRoster = 0;
-    const changes = []; // {pid, oldName, newName, oldFurnace, newFurnace}
-    const errors = [];  // {pid, error}
-    const CHUNK = 200; // PIDs per request
-
-    while (true) {
-      box.innerHTML = `Syncing… processed <b>${totalProcessed}</b> so far. Please keep this tab open.`;
-      const res = await apiPost("sync_game_all", { startIndex, limit: CHUNK });
-      if (!res.ok){
-        box.style.background = "#fde7e7";
-        box.style.borderColor = "#e0a0a0";
-        box.style.color = "#8a1f1f";
-        box.innerHTML = "Sync failed: " + (res.error || "unknown");
-        return;
-      }
-      totalUpdated   += res.updated || 0;
-      totalUnchanged += res.unchanged || 0;
-      totalErrors    += res.errors || 0;
-      totalProcessed += res.total || 0;
-      totalInRoster   = res.totalInRoster || totalInRoster;
-
-      (res.results || []).forEach(r => {
-        if (!r.ok) { errors.push({ pid: r.pid, error: r.error }); return; }
-        if (r.nameChanged || r.furnaceChanged){
-          changes.push({
-            pid: r.pid,
-            oldName: r.oldName, newName: r.newName, nameChanged: r.nameChanged,
-            oldFurnace: r.oldFurnace, newFurnace: r.newFurnace, furnaceChanged: r.furnaceChanged
-          });
-        }
-      });
-
-      if (res.nextIndex == null) break;
-      startIndex = res.nextIndex;
-    }
-
-    let html = `<div style="font-weight:700; margin-bottom:4px;">Sync complete</div>`;
-    html += `<div>Processed <b>${totalProcessed}</b> of <b>${totalInRoster}</b> · Updated <b style="color:#2a8e4d">${totalUpdated}</b> · Unchanged <b>${totalUnchanged}</b> · Errors <b style="color:#a00">${totalErrors}</b></div>`;
-
-    if (changes.length){
-      html += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600;">Show ${changes.length} change(s)</summary>`;
-      html += `<table style="width:100%; margin-top:6px; border-collapse:collapse; font-size:12px;">`;
-      html += `<tr style="background:#d4ecdb;"><th style="text-align:left; padding:4px 6px;">PID</th><th style="text-align:left; padding:4px 6px;">Name</th><th style="text-align:left; padding:4px 6px;">Furnace</th></tr>`;
-      changes.forEach(c => {
-        const nameCell = c.nameChanged ? `<s>${esc_(c.oldName||'')}</s> → <b>${esc_(c.newName||'')}</b>` : `${esc_(c.newName||c.oldName||'')}`;
-        const fcCell   = c.furnaceChanged ? `<s>${c.oldFurnace||0}</s> → <b>${c.newFurnace||0}</b>` : `${c.newFurnace||c.oldFurnace||0}`;
-        html += `<tr><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${esc_(c.pid)}</td><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${nameCell}</td><td style="padding:3px 6px; border-top:1px solid #c0d9c9;">${fcCell}</td></tr>`;
-      });
-      html += `</table></details>`;
-    }
-    if (errors.length){
-      html += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600; color:#8a1f1f;">Show ${errors.length} error(s)</summary>`;
-      html += `<div style="font-size:12px; margin-top:4px;">` +
-              errors.map(e => `<div>• ${esc_(e.pid)}: ${esc_(e.error || '')}</div>`).join("") +
+    const flagged = (res.results || []).filter(r => r.status === "REJECTED_BY_GAME");
+    if (flagged.length){
+      html += `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600; color:#8a1f1f;">Show ${flagged.length} PID(s) the game rejected</summary>` +
+              `<div style="font-size:12px; margin-top:4px; max-height:200px; overflow:auto;">` +
+              flagged.map(r => `<div>• <b>${esc_(r.pid)}</b> — state ${esc_(r.state || "")}: check the PID, or the player may have transferred states</div>`).join("") +
               `</div></details>`;
     }
-    box.innerHTML = html;
+    html += manualNoteHtml_();
+    showBannerResult("syncProgress", html, "ok");
 
-    // Refresh the roster table now that names/furnace may have changed
     try { await loadAll(); } catch (e) {}
   }
 
@@ -1370,16 +1718,24 @@
     // Gift code redeem requires ADMIN.
     if (!roleAllows(currentRole(), "ADMIN")){
       msg.style.color = "#a00";
-      msg.textContent = "Sign in as ADMIN or MASTER to redeem gift codes.";
+      msg.textContent = "Sign in as ADMIN to redeem gift codes.";
       openSignIn();
       return;
     }
-    // apiPost will auto-attach the session password as admin_password.
+    // apiPost will auto-attach the session password as adminpassword.
     const pw = currentPassword();
 
     const list = (currentList || []).filter(m => String(m.PID || "").trim() && String(m.PID).toLowerCase() !== "na");
     const est = Math.max(1, list.length);
-    if (!confirm(`Redeem "${code}" for ${est || '?'} players?\n\nThis takes ~${Math.ceil(est*1.2/60)} minute(s) at ~1 request/second to respect the game's rate limit.`)) return;
+
+    // The game now requires each player's state/server number.
+    const stateIn = prompt(`Which state should "${code}" be redeemed in?\n\nPlayers with their own State set on the roster use that value; this is the fallback for everyone else.`, DEFAULT_STATE);
+    if (stateIn === null) return;
+    const state = String(stateIn).replace(/[^0-9]/g, "").trim() || DEFAULT_STATE;
+
+    // One request per player now that the captcha is gone: ~2.5s each.
+    const mins = Math.max(1, Math.ceil(est * 2.5 / 60));
+    if (!confirm(`Redeem "${code}" for ${est || '?'} players in state ${state}?\n\nThis takes about ${mins} minute(s) — the game allows 30 requests per minute, so we pace one player every 2.5 seconds.`)) return;
 
     msg.style.color = "#555"; msg.textContent = "";
     box.style.display = "block";
@@ -1387,12 +1743,12 @@
     box.innerHTML = `Redeeming <b>${esc_(code)}</b>… keep this tab open.`;
 
     let startIndex = 0;
-    let stats = { success:0, alreadyClaimed:0, invalid:0, expired:0, errors:0, skipped:0 };
+    let stats = { success:0, alreadyClaimed:0, invalid:0, expired:0, errors:0, skipped:0, badPlayers:0 };
     let total = 0, totalInRoster = 0;
     const results = [];
-    // Chunk size must match the backend cap. Each redeem costs ~8–15s (captcha
-    // solve + possible retry), so 15 PIDs ≈ 2–3 min per batch on a busy run.
-    const CHUNK = 15;
+    // Chunk size must match the backend cap. Redemption is a single request per
+    // player now (no captcha), so 50 PIDs ≈ 2 min per batch.
+    const CHUNK = 50;
     let stopped = null;
     const startedAt = Date.now();
 
@@ -1404,8 +1760,8 @@
       box.innerHTML =
         `${phase} <b>${esc_(code)}</b>… processed <b>${total}</b>${rosterLine} · ⌚ ${mm}:${ss}` +
         (total > 0
-          ? `<div style="font-size:12px; margin-top:3px;">✔ ${stats.success} success · ${stats.alreadyClaimed} already claimed · ${stats.errors} errors</div>`
-          : `<div style="font-size:12px; margin-top:3px; opacity:0.75;">First batch in flight — game API limits us to ~1 request/sec.</div>`);
+          ? `<div style="font-size:12px; margin-top:3px;">✔ ${stats.success} success · ${stats.alreadyClaimed} already claimed · ${stats.badPlayers} bad PID/state · ${stats.errors} errors</div>`
+          : `<div style="font-size:12px; margin-top:3px; opacity:0.75;">First batch in flight — the game API allows 30 requests per minute.</div>`);
     }
 
     renderProgress("Redeeming");
@@ -1413,11 +1769,10 @@
     const ticker = setInterval(() => renderProgress("Redeeming"), 1000);
 
     while (true){
-      const res = await apiPost("redeem_code", { code, admin_password: pw, startIndex, limit: CHUNK });
+      const res = await apiPost("redeem_code", { code, adminpassword: pw, state, startIndex, limit: CHUNK });
       if (!res.ok){
         clearInterval(ticker);
-        box.style.background = "#fde7e7"; box.style.borderColor = "#e0a0a0"; box.style.color = "#8a1f1f";
-        box.innerHTML = "Redemption failed: " + esc_(res.error || "unknown");
+        showBannerResult("giftCodeProgress", "Redemption failed: " + esc_(res.error || "unknown"), "error");
         return;
       }
       stats.success        += res.success || 0;
@@ -1426,6 +1781,7 @@
       stats.expired        += res.expired || 0;
       stats.errors         += res.errors || 0;
       stats.skipped        += res.skipped || 0;
+      stats.badPlayers     += res.badPlayers || 0;
       total += res.total || 0;
       totalInRoster = res.totalInRoster || totalInRoster;
       (res.results || []).forEach(r => results.push(r));
@@ -1449,18 +1805,25 @@
       `<span style="color:#2a8e4d;">✔ Success: <b>${stats.success}</b></span> · ` +
       `<span>Already claimed: <b>${stats.alreadyClaimed}</b></span> · ` +
       `<span>Skipped (prior run): <b>${stats.skipped}</b></span> · ` +
+      `<span style="color:#a00;">Bad PID/state: <b>${stats.badPlayers}</b></span> · ` +
       `<span style="color:#a00;">Errors: <b>${stats.errors}</b></span>` +
       `</div>`;
 
+    if (stats.badPlayers){
+      html += `<div style="margin-top:6px; font-size:12px;">“Bad PID/state” means the game refused that player in state <b>${esc_(state)}</b>. ` +
+              `They were retried once after a pause, so this is most likely a wrong PID or a player who transferred to another state.</div>`;
+    }
+
     // Show errors inline
     const errRows = results.filter(r => r.result !== "SUCCESS" && r.result !== "ALREADY_CLAIMED" && r.result !== "SKIPPED");
+    errRows.forEach(r => { if (r.state) r.name = (r.name || "") + " (state " + r.state + ")"; });
     if (errRows.length){
       html += `<details style="margin-top:6px;"><summary style="cursor:pointer;">Show ${errRows.length} issue(s)</summary>` +
               `<div style="font-size:12px; margin-top:4px; max-height:200px; overflow:auto;">` +
               errRows.map(r => `<div>• <b>${esc_(r.pid)}</b> ${esc_(r.name||'')}: ${esc_(r.result)} — ${esc_(r.message||'')}</div>`).join("") +
               `</div></details>`;
     }
-    box.innerHTML = html;
+    showBannerResult("giftCodeProgress", html, stopped ? "error" : "ok");
 
     // Refresh history table
     refreshGiftCodesTable();
@@ -1488,12 +1851,12 @@
 
   async function refreshGiftCodesTable(){
     const host = document.getElementById("giftCodesHistory");
-    host.innerHTML = `<div class="small" style="color:#aab2c0;">Loading history…</div>`;
+    host.innerHTML = `<div class="small" style="color:var(--text-dim);">Loading history…</div>`;
     const res = await apiGet({ view: "gift_codes" });
     if (!res.ok){ host.innerHTML = `<div class="small" style="color:#a00;">Failed to load: ${esc_(res.error || 'unknown')}</div>`; return; }
     const codes = res.codes || [];
     if (codes.length === 0){
-      host.innerHTML = `<div class="small" style="color:#aab2c0;">No gift codes tried yet. Paste one above or wait for the daily auto-check.</div>`;
+      host.innerHTML = `<div class="small" style="color:var(--text-dim);">No gift codes tried yet. Paste one above or wait for the daily auto-check.</div>`;
       return;
     }
     const fmt = v => {
@@ -1529,11 +1892,11 @@
       html += `<tr style="border-top:1px solid rgba(255,255,255,0.08);">` +
         `<td style="padding:6px 8px; font-family:monospace; color:#eaeef6;"><b>${esc_(c.Code)}</b></td>` +
         `<td style="padding:6px 8px;">${statusChip(c.Status)}</td>` +
-        `<td style="padding:6px 8px; color:#aab2c0;">${fmt(c.FirstSeen)}</td>` +
-        `<td style="padding:6px 8px; color:#aab2c0;">${fmt(c.LastTried)}</td>` +
-        `<td style="padding:6px 8px; color:#aab2c0;">${esc_(c.Source || '')}</td>` +
+        `<td style="padding:6px 8px; color:var(--text-dim);">${fmt(c.FirstSeen)}</td>` +
+        `<td style="padding:6px 8px; color:var(--text-dim);">${fmt(c.LastTried)}</td>` +
+        `<td style="padding:6px 8px; color:var(--text-dim);">${esc_(c.Source || '')}</td>` +
         `<td style="padding:6px 8px; text-align:right; color:#38b464;"><b>${Number(c.Success)||0}</b></td>` +
-        `<td style="padding:6px 8px; text-align:right; color:#aab2c0;">${Number(c.AlreadyClaimed)||0}</td>` +
+        `<td style="padding:6px 8px; text-align:right; color:var(--text-dim);">${Number(c.AlreadyClaimed)||0}</td>` +
         `<td style="padding:6px 8px; text-align:right; color:#e05a5a;">${Number(c.Errors)||0}</td>` +
         `<td style="padding:6px 8px; text-align:right;">` +
           `<button class="subtle" style="font-size:11px; padding:3px 8px;" onclick="prefillCode('${esc_(c.Code).replace(/'/g,"&#39;")}')">Use</button>` +
@@ -1586,10 +1949,23 @@
   }
 
   function fillForm(m){
+    const TROOP_FIELDS = { Type_Of_Infantry:"Infantry", Type_Of_Marksmen:"Marksmen", Type_Of_Lancers:"Lancers" };
     FIELDS.forEach(f => {
       const el = document.getElementById(f);
       if (!el) return;
       let v = (m[f] ?? "");
+
+      // Troop-type fields: read tolerantly (Type_Of_* or legacy Helios_*) and
+      // normalize legacy Yes/No into the new Regular/Helios options.
+      if (TROOP_FIELDS[f]) {
+        const raw = troopCell_(m, TROOP_FIELDS[f]);
+        const t = troopTier_(raw); // "" | "na" | "regular" | "helios" | "exalted"
+        if (t === "regular") v = "Regular";
+        else if (t === "helios") v = "Helios";
+        else if (t === "exalted") v = "Exalted";
+        else v = ""; // blank or NA
+      }
+
       // Treat "NA" as blank in the form for optional fields
       if (String(v).toUpperCase() === "NA") v = "";
 
@@ -1665,6 +2041,8 @@
     FIELDS.forEach(f => obj[f] = document.getElementById(f).value);
     // force PID trim
     obj["PID"] = (obj["PID"] || "").toString().trim();
+    // The gift-code API requires a state/server number, so never save a blank one.
+    obj["State"] = (obj["State"] || "").toString().replace(/[^0-9]/g, "").trim() || DEFAULT_STATE;
     return obj;
   }
 
@@ -1676,19 +2054,53 @@
       const isSelected = selectedPids.has(pid);
       const tr = document.createElement("tr");
       if (isSelected) tr.classList.add("selected");
+      const starred = isSquad_(m);
+      const canStar = roleAllows(currentRole(), "ADMIN");
+      const starTitle = canStar
+        ? (starred ? "In the SVS Squad — click to remove" : "Not in the SVS Squad — click to add")
+        : (starred ? "In the SVS Squad" : "Not in the SVS Squad");
       tr.innerHTML = `
         <td class="sel-col"><input type="checkbox" class="rowSel" data-pid="${pid}" ${isSelected ? "checked" : ""}/></td>
-        <td>${m.Name ?? ""}</td>
-        <td>${m.PID ?? ""}</td>
-        <td>${m.Game_Power ?? ""}</td>
-        <td>${m.City_FC_Level ?? ""}</td>
-        <td>${m.Foundry_Power ?? ""}</td>
+        <td style="text-align:center;">
+          <span class="squadStar" data-pid="${pid}"
+                title="${starTitle}"
+                style="font-size:16px; line-height:1; user-select:none;
+                       color:${starred ? "#ffc83d" : "rgba(255,255,255,0.25)"};
+                       cursor:${canStar ? "pointer" : "default"};">${starred ? "★" : "☆"}</span>
+        </td>
+        <td>${esc_(m.Name ?? "")}</td>
+        <td>${esc_(m.PID ?? "")}</td>
+        <td>${esc_(m.State ?? "")}</td>
+        <td>${esc_(m.Alliance ?? "")}</td>
+        <td>${esc_(m.City_FC_Level ?? "")}</td>
+        <td>${tierBadge_(troopCell_(m, "Infantry"))}</td>
+        <td>${esc_(m.Infantry_FC_Level ?? "")}</td>
+        <td>${tierBadge_(troopCell_(m, "Marksmen"))}</td>
+        <td>${esc_(m.Marksmen_FC_Level ?? "")}</td>
+        <td>${tierBadge_(troopCell_(m, "Lancers"))}</td>
+        <td>${esc_(m.Lancer_FC_Level ?? "")}</td>
+        <td>${esc_(m.Game_Power ?? "")}</td>
       `;
       tr.style.cursor = "pointer";
 
-      // Clicking the row (but not the checkbox) opens the Player Profile
+      // Star toggles SVS Squad membership (ADMIN and MASTER only).
+      const star = tr.querySelector(".squadStar");
+      if (star){
+        star.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!roleAllows(currentRole(), "ADMIN")){
+            setMsg("Sign in as ADMIN or MASTER to change the SVS Squad.");
+            openSignIn();
+            return;
+          }
+          toggleSquad(normPid(m.PID), !starred);
+        });
+      }
+
+      // Clicking the row (but not the checkbox or the star) opens the Player Profile
       tr.onclick = (e) => {
         if (e.target && (e.target.classList.contains("rowSel") || e.target.closest(".sel-col"))) return;
+        if (e.target && e.target.classList.contains("squadStar")) return;
         const searchBox = document.getElementById("profileSearch");
         if (searchBox) searchBox.value = normPid(m.PID);
         showProfileForPid(normPid(m.PID));
@@ -1711,6 +2123,24 @@
     });
     updateSelCount();
     syncSelectAllBox();
+  }
+
+  // ---- SVS Squad star ----
+  // Flips the SVS_Squad flag for one player, then patches the cached roster in
+  // place so the star updates instantly without a full reload.
+  async function toggleSquad(pid, next){
+    setMsg(next ? "Adding to SVS Squad\u2026" : "Removing from SVS Squad\u2026");
+    const r = await apiPost("svs_squad_toggle", { PID: pid, Squad: next });
+    if (!r.ok){ setMsg("Error: " + (r.error || "unknown")); return; }
+
+    const val = r.Squad ? "Yes" : "No";
+    [sheetDefaultOrder, currentList, archiveList].forEach(arr => {
+      if (!Array.isArray(arr)) return;
+      arr.forEach(m => { if (normPid(m.PID) === normPid(pid)) m.SVS_Squad = val; });
+    });
+
+    applyTabAndFilters();
+    setMsg(r.Squad ? "Added to SVS Squad." : "Removed from SVS Squad.");
   }
 
   function updateSelCount() {
@@ -1750,9 +2180,9 @@
     updateSelCount();
   }
 
-  // Guard for bulk delete / archive. Takes the minimum role required:
-  //   - "ADMIN"  for archive (any admin or master)
-  //   - "MASTER" for hard delete (master only)
+  // Guard for gated actions. Takes the minimum role required:
+  //   - "ADMIN"  for archive and all normal management actions
+  //   - "MASTER" for destructive actions (delete player, delete event)
   // If the user isn't signed in at a high enough level, we prompt them to sign in.
   function requirePassword(actionLabel, minRole) {
     const need = minRole || "ADMIN";
@@ -1763,6 +2193,44 @@
     return false;
   }
 
+  function currentSession()
+  {
+    return loadSession();
+  }
+
+  function currentPlayerPid()
+  {
+    const s = loadSession();
+    return s && s.role === 'PLAYER' ? normPid(s.playerPid) : '';
+  }
+
+  function isValidUtcTime(s)
+  {
+    return /^([01]\d|2[0-3])([0-5]\d)\sUTC$/.test(String(s || '').trim());
+  }
+
+  function validateEventTimes(type, payload)
+  {
+    if (type === 'Canyon' || type === 'Foundry') 
+    {
+      if (!isValidUtcTime(payload.Legion1Time)) 
+      {
+        return 'Legion 1 Time must be in 24-hour UTC format, for example 1900 UTC.';
+      }
+      if (!isValidUtcTime(payload.Legion2Time)) 
+      {
+        return 'Legion 2 Time must be in 24-hour UTC format, for example 2100 UTC.';
+      }
+    } 
+    else 
+    {
+      if (!isValidUtcTime(payload.EventTime)) 
+      {
+        return 'Event Time must be in 24-hour UTC format, for example 2000 UTC.';
+      }
+    } 
+  return '';
+}
   // Chunk size for bulk requests. Keeps each URL under Apps Script's ~10k char limit.
   // ~200 PIDs per batch is safe for 9-10 digit PIDs.
   const BULK_CHUNK_SIZE = 200;
@@ -1776,12 +2244,21 @@
   async function bulkAction(action, label) {
     const pids = Array.from(selectedPids);
     if (pids.length === 0) { setMsg(`Select at least one player to ${label}.`); return; }
-    if (!confirm(`${label[0].toUpperCase() + label.slice(1)} ${pids.length} player(s)?\nThis cannot be undone from the site.`)) return;
-    // delete requires MASTER, archive requires ADMIN
-    const needed = action === "delete" ? "MASTER" : "ADMIN";
-    if (!requirePassword(label, needed)) return;
 
-    const bulkActionName = action === "delete" ? "delete_bulk" : "archive_bulk";
+    const isDelete  = (action === "delete");
+    const isRestore = (action === "restore");
+
+    // Restore is reversible (just re-archive); archive/delete get the stern warning.
+    const confirmMsg = isRestore
+      ? `Restore ${pids.length} player(s) to the roster as TBD?`
+      : `${label[0].toUpperCase() + label.slice(1)} ${pids.length} player(s)?\nThis cannot be undone from the site.`;
+    if (!confirm(confirmMsg)) return;
+
+    // Archive + restore are ADMIN; hard delete is MASTER only.
+    const minRole = isDelete ? "MASTER" : "ADMIN";
+    if (!requirePassword(label, minRole)) return;
+
+    const bulkActionName = isDelete ? "delete_bulk" : (isRestore ? "restore_bulk" : "archive_bulk");
     const batches = chunk_(pids, BULK_CHUNK_SIZE);
 
     const started = performance.now();
@@ -1796,9 +2273,14 @@
       try {
         const res = await apiPost(bulkActionName, { PIDs: batch });
         if (res.ok) {
-          const count = (action === "delete") ? (res.deletedCount ?? 0) : (res.archivedCount ?? 0);
+          const count = isDelete
+            ? (res.rowsDeleted ?? res.totalRowsDeleted ?? batch.length)
+            : (isRestore ? (res.restoredCount ?? 0) : (res.archivedCount ?? 0));
           success += count;
           if (Array.isArray(res.notFound)) notFoundAll.push(...res.notFound);
+          if (Array.isArray(res.skipped) && res.skipped.length) {
+            errors.push(`Already on roster (skipped): ${res.skipped.join(", ")}`);
+          }
         } else {
           fail += batch.length;
           errors.push(`Batch ${i + 1}: ${res.error || "unknown"}`);
@@ -1826,11 +2308,19 @@
     if (dbg.length) setDebug(dbg.join("\n\n"));
 
     clearSelection();
+
+    // Restore moves rows Archive -> roster, so both lists are now stale.
+    if (isRestore) archiveLoaded = false;
     await loadAll();
+    // If we restored while viewing the Archive tab, refresh it so restored rows drop off.
+    if (isRestore && activeTab === "ARCHIVE") { await setTab("ARCHIVE"); }
   }
 
+  // Archive (ADMIN) is non-destructive; delete (MASTER only) is a hard delete.
   function deleteSelected()  { bulkAction("delete",  "delete");  }
   function archiveSelected() { bulkAction("archive", "archive"); }
+  // Restore (ADMIN) moves archived players back onto the roster as TBD.
+  function restoreSelected() { bulkAction("restore", "restore"); }
 
  async function loadAll() 
  {
@@ -1840,38 +2330,42 @@
 
   // Always treat the sheet response as source of truth
   sheetDefaultOrder = res.members || [];
-  currentList = [...sheetDefaultOrder];
 
-  // Render exactly in sheet order on load
-  renderTable(currentList);
+  // Archive cache is now stale — force a reload next time the Archive tab opens.
+  archiveLoaded = false;
+  archiveList = [];
 
   // Clear any previous column sort UI
   sortState.key = null;
   sortState.dir = 1;
   updateHeaderArrows();
 
-  setMsg(`Loaded ${currentList.length} players.`);
+  // Render through the tab + filter pipeline (honors the active tab).
+  applyTabAndFilters();
+
+  setMsg(`Loaded ${sheetDefaultOrder.length} players.`);
   updateSaveMode();
 }
 
 
-  async function searchByPID(){
-    const pid = document.getElementById("searchPid").value.trim();
-    if (!pid) return setMsg("Enter a PID.");
-    const res = await apiGet({ pid });
-    if (!res.ok) return setMsg(res.error || "Not found");
-    fillForm(res.member);
-    setMsg("Loaded member.");
-  }
+  async function upsert()
+  {
+    const data = readForm();
+    if (!data.PID) return setMsg("PID is required.");
 
- async function upsert(){
-  const data = readForm();
-  if (!data.PID) return setMsg("PID is required.");
-  if (!roleAllows(currentRole(), "HR")){
-    setMsg("Sign in as HR, ADMIN, or MASTER to edit players.");
-    openSignIn();
-    return;
-  }
+    if (!canEditPid(data.PID)) {
+      setMsg("You can only edit your own profile.");
+      openSignIn();
+      return;
+    }
+
+    if (currentRole() === "PLAYER") {
+      const lockedPid = currentPlayerPid();
+      if (normPid(data.PID) !== lockedPid) {
+        setMsg("Players cannot change PID.");
+        return;
+      }
+    }
 
   setMsg("Saving...");
   // Debug: show exactly what we're sending
@@ -1909,33 +2403,28 @@
 }
 
 
+  // Hard-delete a single player. MASTER only.
   async function deletePID(){
-  const pid = (document.getElementById("PID").value || "").trim();
-  if (!pid) return setMsg("Enter/load a PID first.");
-  if (!roleAllows(currentRole(), "MASTER")) { setMsg("Only MASTER can delete players."); openSignIn(); return; }
-  if (!confirm(`Delete PID ${pid}?`)) return;
+    const data = readForm();
+    const pid = normPid(data.PID);
+    if (!pid) return setMsg("PID is required to delete a player.");
 
-  setMsg("Deleting...");
-  try{
-    const res = await apiPost("delete", { PID: pid });
+    if (!requirePassword("delete a player", "MASTER")) return;
 
-    if (!res.ok) {
-      setMsg("Delete failed: " + (res.error || "Unknown error"));
-      return;
+    if (!confirm(`Permanently delete player ${pid}?\nThis removes them from the roster and all related sheets and cannot be undone.`)) return;
+
+    setMsg("Deleting...");
+    try {
+      const res = await apiPost("delete", { PID: pid });
+      if (!res.ok) { setMsg("Delete failed: " + (res.error || "Unknown error")); return; }
+      setMsg(`🗑️ Deleted player ${pid}.`);
+      clearForm();
+      await loadAll();
+    } catch (err) {
+      setMsg("Delete failed (network): " + err.message);
+      setDebug(String(err));
     }
-
-    clearForm();
-    setMsg(`✅ Deleted (PID ${pid})`);
-    // If the deleted player was the one in the profile, clear it too
-    if (currentProfilePid && normPid(currentProfilePid) === normPid(pid)){
-      clearProfile();
-    }
-    await loadAll();
-  } catch (err){
-    setMsg("Delete failed (network): " + err.message);
-    setDebug(String(err));
   }
-}
 
 
  function resetToSheetOrder() 
@@ -1975,6 +2464,21 @@
     if (s.toLowerCase() === "yes") return `<span class="yes-badge">Yes</span>`;
     if (s.toLowerCase() === "no")  return `<span class="no-badge">No</span>`;
     if (!s || s.toUpperCase() === "NA") return `<span class="na-badge">—</span>`;
+    return esc_(s);
+  }
+
+  // Badge for the troop tier columns (Regular / Helios / Exalted).
+  // Old data may still say "Yes" (=Helios) or "No" (=Regular) until migrated.
+  function tierBadge_(v){
+    let s = String(v ?? "").trim();
+    const low = s.toLowerCase();
+    if (low === "yes") s = "Helios";
+    else if (low === "no") s = "Regular";
+    if (!s || s.toUpperCase() === "NA") return `<span class="na-badge">—</span>`;
+    const key = s.toLowerCase();
+    if (key === "exalted") return `<span class="tier-badge tier-exalted">Exalted</span>`;
+    if (key === "helios")  return `<span class="tier-badge tier-helios">Helios</span>`;
+    if (key === "regular") return `<span class="tier-badge tier-regular">Regular</span>`;
     return esc_(s);
   }
 
@@ -2173,14 +2677,15 @@
 
     // Roster info block
     const fields = [
+      ["Alliance",        esc_(m.Alliance || "")],
       ["Game Power",      esc_(m.Game_Power)],
       ["City FC Level",   esc_(m.City_FC_Level)],
       ["Foundry Power",   esc_(m.Foundry_Power)],
-      ["Helios Infantry", ynBadge_(m.Helios_Infantry)],
+      ["Infantry Type",   tierBadge_(troopCell_(m, "Infantry"))],
       ["Infantry FC",     esc_(m.Infantry_FC_Level)],
-      ["Helios Marksmen", ynBadge_(m.Helios_Marksmen)],
+      ["Marksmen Type",   tierBadge_(troopCell_(m, "Marksmen"))],
       ["Marksmen FC",     esc_(m.Marksmen_FC_Level)],
-      ["Helios Lancer",   ynBadge_(m.Helios_Lancer)],
+      ["Lancer Type",     tierBadge_(troopCell_(m, "Lancers"))],
       ["Lancer FC",       esc_(m.Lancer_FC_Level)],
       ["Gender",          esc_(m.Gender)],
       ["Location",        esc_(m.Location)],
@@ -2288,7 +2793,7 @@
           ${pending > 0 ? `
           <div class="part-stat">
             <div class="part-stat-label">Pending</div>
-            <div class="part-stat-value" style="color:#aab2c0">${pending}</div>
+            <div class="part-stat-value" style="color:var(--text-dim)">${pending}</div>
           </div>` : ""}
           <div class="part-stat">
             <div class="part-stat-label">Attendance Rate</div>
@@ -2390,17 +2895,17 @@
   });
 
   // -------- Hero editor modal --------
-  let _heroEditorState = { pid: null, rows: {} }; // rows keyed by heroId
+  let heroEditorState = { pid: null, rows: {} }; // rows keyed by heroId
 
   async function openHeroEditor(pid){
-    _heroEditorState.pid = pid;
-    _heroEditorState.rows = {};
+    heroEditorState.pid = pid;
+    heroEditorState.rows = {};
     // Seed from current profile if we have it cached
     const cached = window._currentProfile;
     if (cached && cached.member && normPid(cached.member.PID) === normPid(pid) && Array.isArray(cached.player_heroes)){
       cached.player_heroes.forEach(r => {
         const hid = String(r.HeroID || "").toLowerCase();
-        if (hid) _heroEditorState.rows[hid] = {
+        if (hid) heroEditorState.rows[hid] = {
           Stars: Number(r.Stars)||0,
           WidgetLevel: Number(r.WidgetLevel)||0,
           Skill1: Number(r.Skill1)||0,
@@ -2418,7 +2923,7 @@
       if (res.ok && Array.isArray(res.heroes)){
         res.heroes.forEach(r => {
           const hid = String(r.HeroID || "").toLowerCase();
-          if (hid) _heroEditorState.rows[hid] = {
+          if (hid) heroEditorState.rows[hid] = {
             Stars: Number(r.Stars)||0,
             WidgetLevel: Number(r.WidgetLevel)||0,
             Skill1: Number(r.Skill1)||0,
@@ -2443,7 +2948,7 @@
   function renderHeroEditor_(){
     const body = document.getElementById("heroEditorBody");
     const title = document.getElementById("heroEditorTitle");
-    const pid = _heroEditorState.pid;
+    const pid = heroEditorState.pid;
     const m = (currentList || []).find(x => normPid(x.PID) === normPid(pid));
     title.textContent = m ? `Edit Heroes — ${m.Name} (${m.PID})` : `Edit Heroes — PID ${pid}`;
 
@@ -2463,7 +2968,7 @@
   }
 
   function heroEditorRow_(h){
-    const r = _heroEditorState.rows[h.id] || {};
+    const r = heroEditorState.rows[h.id] || {};
     const color = FACTION_COLORS[h.faction] || '#888';
     const tracked = (Number(r.Stars)||0) > 0 || (Number(r.WidgetLevel)||0) > 0 ||
                     (Number(r.Skill1)||0) > 0 || (Number(r.Skill2)||0) > 0 ||
@@ -2517,8 +3022,27 @@
     return out;
   }
 
+  function applyPlayerEditingState()
+  {
+    const pidEl = document.getElementById('PID');
+    if (!pidEl) return;
+    const s = currentSession();
+    if (s && s.role === 'PLAYER') {
+      // A player edits only their own record; the PID is fixed to their own and never editable.
+      pidEl.value = s.playerPid || '';
+      pidEl.readOnly = true;
+      pidEl.disabled = true;
+    } else {
+      // ADMIN and MASTER may type a PID to add or look up a player. Note the backend
+      // uses PID as the row key, so an "update" edits the matching row rather than
+      // renaming it. Deleting a player is a separate MASTER-only action (Delete PID).
+      pidEl.readOnly = false;
+      pidEl.disabled = false;
+    }
+  }
+
   function heroEditorSet(heroId, field, val){
-    const row = _heroEditorState.rows[heroId] || {};
+    const row = heroEditorState.rows[heroId] || {};
     row[field] = Number(val) || 0;
 
     // Auto-apply skill cap based on stars:
@@ -2535,7 +3059,7 @@
         else if (cur < cap) row[k] = cap;
         else if (cur > cap) row[k] = cap;
       });
-      _heroEditorState.rows[heroId] = row;
+      heroEditorState.rows[heroId] = row;
       renderHeroEditor_();
       return;
     }
@@ -2546,7 +3070,7 @@
       if (Number(row[field]) > cap) row[field] = cap;
     }
 
-    _heroEditorState.rows[heroId] = row;
+    heroEditorState.rows[heroId] = row;
     const card = document.querySelector(`.hero-edit-card[data-hero-id="${heroId}"]`);
     if (card){
       const tracked = row.Stars>0 || row.WidgetLevel>0 || row.Skill1>0 || row.Skill2>0 || row.Skill3>0 || row.Skill4>0 || row.Skill5>0 || row.Skill6>0;
@@ -2555,7 +3079,7 @@
   }
 
   function heroEditorQuickMax(heroId){
-    _heroEditorState.rows[heroId] = {
+    heroEditorState.rows[heroId] = {
       Stars: MAX_STARS, WidgetLevel: MAX_WIDGET,
       Skill1: MAX_SKILL, Skill2: MAX_SKILL, Skill3: MAX_SKILL,
       Skill4: MAX_SKILL, Skill5: MAX_SKILL, Skill6: MAX_SKILL
@@ -2564,17 +3088,31 @@
   }
 
   function heroEditorClear(heroId){
-    _heroEditorState.rows[heroId] = { Stars:0, WidgetLevel:0, Skill1:0, Skill2:0, Skill3:0, Skill4:0, Skill5:0, Skill6:0 };
+    heroEditorState.rows[heroId] = { Stars:0, WidgetLevel:0, Skill1:0, Skill2:0, Skill3:0, Skill4:0, Skill5:0, Skill6:0 };
     renderHeroEditor_();
   }
 
   async function saveHeroEditor(){
     const msg = document.getElementById("heroEditorMsg");
-    const pid = _heroEditorState.pid;
-    if (!pid){ msg.textContent = "Missing PID."; return; }
-    if (!roleAllows(currentRole(), "HR")){ msg.style.color="#a00"; msg.textContent = "Sign in as HR or higher to update heroes."; openSignIn(); return; }
+    const pid = heroEditorState.pid;
+    if (!pid) return;
+
+    const role = currentRole();
+    const ownPid = currentPlayerPid();
+    // ADMIN can edit anyone's heroes; a PLAYER can only edit their own.
+    const canEditOwnHeroes =
+      roleAllows(role, 'ADMIN') || (role === 'PLAYER' && normPid(pid) === ownPid);
+
+    if (!canEditOwnHeroes) 
+    {
+      msg.style.color = '#a00';
+      msg.textContent = 'Sign in as ADMIN or with your own PID to update these heroes.';
+      openSignIn();
+      return;
+    }
+
     // Build payload with only rows that are tracked OR were previously tracked (so we can delete)
-    const heroes = Object.entries(_heroEditorState.rows).map(([id, r]) => ({
+    const heroes = Object.entries(heroEditorState.rows).map(([id, r]) => ({
       HeroID: id,
       Stars: Number(r.Stars)||0,
       WidgetLevel: Number(r.WidgetLevel)||0,
@@ -2678,23 +3216,41 @@
     // Returns human-friendly status pill label + color class
     const raw = String(ev.Status || "").trim();
     if (raw === "Complete") return { label: "Complete", bg: "#cfe8d1", color: "#1a5b2a" };
+    // SVS prep can be logged all week before any battle score exists.
+    if (raw === "Prep In Progress") return { label: "Prep Logged", bg: "#e6dcff", color: "#41267a" };
     const now = new Date();
-    const d = ev.EventDate ? new Date(ev.EventDate) : null;
+    // For SVS the meaningful deadline is battle day, not the prep start.
+    const d = (ev.Type === "SVS" && ev.BattleDate) ? new Date(ev.BattleDate)
+            : (ev.EventDate ? new Date(ev.EventDate) : null);
     if (d && !isNaN(d.getTime()) && d < now && d.toDateString() !== now.toDateString()){
-      return { label: "Awaiting Attendance", bg: "#ffeccb", color: "#7a4a00" };
+      return ev.Type === "SVS"
+        ? { label: "Awaiting Scores", bg: "#ffeccb", color: "#7a4a00" }
+        : { label: "Awaiting Attendance", bg: "#ffeccb", color: "#7a4a00" };
     }
     return { label: "Upcoming", bg: "#d7e4ff", color: "#143a91" };
   }
 
-  // Front-end guard for event actions. Allows EVENT, ADMIN, or MASTER.
-  // HR is a sibling role and cannot modify events — backend enforces the same rule.
-  // Event DELETE is MASTER-only — that's enforced separately by the calling code.
+  // Front-end guard for event actions. ADMIN (and MASTER) may create events and edit
+  // event logs. Deleting an event is MASTER only. Backend enforces the same rules.
   function checkEventPassword(){
     const role = currentRole();
-    if (roleAllows(role, "EVENT")) return true;
-    setMsg("You must be signed in as EVENT, ADMIN, or MASTER to modify events.");
+    if (roleAllows(role, "ADMIN")) return true;
+    setMsg("You must be signed in as ADMIN to modify events.");
     openSignIn();
     return false;
+  }
+
+  // ---- Events list ----
+  // loadEvents() fetches; renderEventsList() draws whatever the tab filter allows,
+  // so switching tabs is instant and does not hit the API again.
+  let activeEventTab = "ALL";   // ALL | Canyon | Foundry | SVS
+
+  function setEventTab(tab){
+    activeEventTab = tab;
+    document.querySelectorAll("#eventTabs .tab-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.etab === tab);
+    });
+    renderEventsList();
   }
 
   async function loadEvents(){
@@ -2705,11 +3261,31 @@
     const r = await apiGet({ view: "events_list" });
     if (!r.ok){ msg.textContent = "Error: " + (r.error || ""); return; }
     EVENTS_CACHE = r.events || [];
-    msg.textContent = `${EVENTS_CACHE.length} event(s).`;
-    if (!EVENTS_CACHE.length){
-      box.innerHTML = '<div class="small" style="opacity:.7; padding:10px;">No events yet. Click “Log New Event” to create one.</div>';
+    renderEventsList();
+  }
+
+  function renderEventsList(){
+    const box = document.getElementById("eventsList");
+    const msg = document.getElementById("eventsMsg");
+    if (!box) return;
+
+    const hideDone = !!document.getElementById("evtHideComplete")?.checked;
+    let list = (EVENTS_CACHE || []).slice();
+    if (activeEventTab !== "ALL") list = list.filter(ev => String(ev.Type || "") === activeEventTab);
+    if (hideDone) list = list.filter(ev => computeStatus(ev).label !== "Complete");
+
+    const totalTxt = (EVENTS_CACHE || []).length;
+    msg.textContent = (list.length === totalTxt)
+      ? `${totalTxt} event(s).`
+      : `Showing ${list.length} of ${totalTxt} event(s).`;
+
+    if (!list.length){
+      box.innerHTML = '<div class="small" style="opacity:.7; padding:10px;">'
+        + (totalTxt ? "No events match this filter." : "No events yet. Click \u201cLog New Event\u201d to create one.")
+        + '</div>';
       return;
     }
+
     let html = '<table style="width:100%; border-collapse:collapse;"><thead><tr>'
       + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Type</th>'
       + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Date</th>'
@@ -2718,7 +3294,8 @@
       + '<th style="text-align:left; padding:6px; border-bottom:1px solid #333;">Notes</th>'
       + '<th style="padding:6px; border-bottom:1px solid #333;"></th>'
       + '</tr></thead><tbody>';
-    EVENTS_CACHE.forEach(ev => {
+
+    list.forEach(ev => {
       const s = computeStatus(ev);
       const theme = EVENT_THEMES[ev.Type] || EVENT_THEMES._default;
       const pill = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; background:${s.bg}; color:${s.color}; font-size:12px;">${esc(s.label)}</span>`;
@@ -2726,22 +3303,32 @@
       let timeCell = esc(ev.EventTime || "");
       if (ev.Type === "Canyon" || ev.Type === "Foundry"){
         const l1 = esc(ev.Legion1Time || ""), l2 = esc(ev.Legion2Time || "");
-        timeCell = `<div style="font-size:12px; line-height:1.4;"><b>L1:</b> ${l1 || "—"}<br><b>L2:</b> ${l2 || "—"}</div>`;
+        timeCell = `<div style="font-size:12px; line-height:1.4;"><b>L1:</b> ${l1 || "\u2014"}<br><b>L2:</b> ${l2 || "\u2014"}</div>`;
+      }
+      // SVS spans a week, so show the prep window and the battle day.
+      let dateCell = esc(fmtDate(ev.EventDate));
+      if (ev.Type === "SVS" && (ev.PrepStartDate || ev.BattleDate)){
+        const prepFrom = esc(fmtDate(ev.PrepStartDate || ev.EventDate));
+        const prepTo   = esc(fmtDate(ev.PrepEndDate || shiftIso_(ev.PrepStartDate || ev.EventDate, 4)));
+        const bat      = ev.BattleDate ? esc(fmtDate(ev.BattleDate)) : "\u2014";
+        dateCell = `<div style="font-size:12px; line-height:1.4;"><b>Prep:</b> ${prepFrom} \u2013 ${prepTo}<br><b>Battle:</b> ${bat}</div>`;
       }
       html += `<tr>`
         + `<td style="padding:6px; border-bottom:1px solid #222;">${typeBadge}</td>`
-        + `<td style="padding:6px; border-bottom:1px solid #222;">${esc(fmtDate(ev.EventDate))}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${dateCell}</td>`
         + `<td style="padding:6px; border-bottom:1px solid #222;">${timeCell}</td>`
         + `<td style="padding:6px; border-bottom:1px solid #222;">${pill}</td>`
         + `<td style="padding:6px; border-bottom:1px solid #222;">${esc(ev.Notes || "")}</td>`
-        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right;">`
-        +   `<button onclick="openEventEditor('${esc(ev.EventID)}')">Open</button> `
-        +   `<button class="danger" onclick="deleteEvent('${esc(ev.EventID)}')">Delete</button>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right; white-space:nowrap;">`
+        +   `<button onclick="openEventViewer('${esc(ev.EventID)}')" title="Read-only: who signed up and who showed">View</button> `
+        +   `<button data-requires="ADMIN" onclick="openEventEditor('${esc(ev.EventID)}')">Open</button>`
         + `</td>`
         + `</tr>`;
     });
     html += '</tbody></table>';
     box.innerHTML = html;
+    // Re-apply role visibility to the buttons we just injected.
+    setRoleUI(currentRole());
   }
 
   function applyModalTheme(type){
@@ -2764,9 +3351,115 @@
   }
   function setModalMsg(t){ document.getElementById("eventModalMsg").textContent = t; }
 
+  // ---- SVS leaderboard ----
+  let SVS_LB_CACHE = [];
+
+  async function loadSvsLeaderboard(){
+    const msg = document.getElementById("svsLbMsg");
+    msg.textContent = "Loading SVS history\u2026";
+    const r = await apiGet({ view: "svs_leaderboard" });
+    if (!r.ok){ msg.textContent = "Error: " + (r.error || ""); return; }
+    SVS_LB_CACHE = r.players || [];
+    msg.textContent = `${r.totalSvsEvents || 0} SVS event(s) on record.`;
+    renderSvsLeaderboard();
+  }
+
+  function renderSvsLeaderboard(){
+    const box = document.getElementById("svsLbBox");
+    if (!box) return;
+    const squadOnly = !!document.getElementById("svsLbSquadOnly")?.checked;
+    let rows = SVS_LB_CACHE.slice();
+    if (squadOnly) rows = rows.filter(p => p.Squad);
+
+    if (!rows.length){
+      box.innerHTML = '<div class="small" style="opacity:.7; padding:10px;">'
+        + (SVS_LB_CACHE.length ? "No starred players yet \u2014 click a \u2605 in the roster." : "Click \u201cLoad / Refresh\u201d to pull SVS history.")
+        + '</div>';
+      return;
+    }
+
+    const canStar = roleAllows(currentRole(), "ADMIN");
+    const num = v => (v === null || v === undefined || v === "") ? "\u2014" : Number(v).toLocaleString(undefined,{maximumFractionDigits:0});
+
+    let html = '<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr>'
+      + ['\u2605','Name','Alliance','Took part','Avg Prep','Best Prep','Avg Battle','Best Battle','Last SVS']
+          .map((h,i) => `<th style="text-align:${i<3?"left":"right"}; padding:6px; border-bottom:1px solid #333; white-space:nowrap;">${h}</th>`).join("")
+      + '</tr></thead><tbody>';
+
+    rows.forEach(p => {
+      const rate = p.totalSvsEvents ? Math.round((p.eventsParticipated / p.totalSvsEvents) * 100) : 0;
+      const rateColor = rate >= 80 ? "#2a8e4d" : (rate >= 50 ? "#b07d12" : "#a33");
+      html += '<tr>'
+        + `<td style="padding:6px; border-bottom:1px solid #222;">`
+        +   `<span class="lbStar" data-pid="${esc(p.PID)}" title="${p.Squad ? "In the SVS Squad" : "Not in the SVS Squad"}"`
+        +   ` style="color:${p.Squad ? "#ffc83d" : "rgba(255,255,255,0.25)"}; cursor:${canStar ? "pointer" : "default"};">`
+        +   `${p.Squad ? "\u2605" : "\u2606"}</span></td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222;">${esc(p.Name || "")}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; opacity:.8;">${esc(p.Alliance || "")}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right; color:${rateColor}; white-space:nowrap;">`
+        +   `${p.eventsParticipated}/${p.totalSvsEvents} (${rate}%)</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right;">${num(p.avgPrep)}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right;">${num(p.bestPrep)}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right; font-weight:600;">${num(p.avgBattle)}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right;">${num(p.bestBattle)}</td>`
+        + `<td style="padding:6px; border-bottom:1px solid #222; text-align:right; white-space:nowrap;">${esc(p.lastEventDate ? fmtDate(p.lastEventDate) : "\u2014")}</td>`
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    box.innerHTML = html;
+
+    box.querySelectorAll(".lbStar").forEach(el => {
+      el.addEventListener("click", async () => {
+        if (!roleAllows(currentRole(), "ADMIN")){
+          document.getElementById("svsLbMsg").textContent = "Sign in as ADMIN or MASTER to change the SVS Squad.";
+          openSignIn();
+          return;
+        }
+        const pid = el.getAttribute("data-pid");
+        const entry = SVS_LB_CACHE.find(x => normPid(x.PID) === normPid(pid));
+        const next = !(entry && entry.Squad);
+        await toggleSquad(pid, next);
+        if (entry) entry.Squad = next;
+        renderSvsLeaderboard();
+      });
+    });
+  }
+
+  // ---- Date helpers for the SVS prep week ----
+  // Dates are handled as plain YYYY-MM-DD strings so nothing shifts by a day
+  // when the browser timezone differs from the sheet's.
+  function shiftIso_(iso, days){
+    if (!iso) return "";
+    const parts = String(iso).slice(0,10).split("-").map(Number);
+    const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    if (isNaN(d.getTime())) return "";
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0,10);
+  }
+
+  function nextMondayIso_(){
+    const now = new Date();
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const dow = d.getUTCDay();               // 0 = Sun, 1 = Mon
+    const add = dow === 1 ? 0 : (8 - dow) % 7;
+    d.setUTCDate(d.getUTCDate() + add);
+    return d.toISOString().slice(0,10);
+  }
+
+  // Keep the battle day pinned to the Saturday of the chosen prep week.
+  function syncSvsDates(){
+    const start = document.getElementById("newPrepStart");
+    const battle = document.getElementById("newBattleDate");
+    if (!start || !battle || !start.value) return;
+    battle.value = shiftIso_(start.value, 5);
+  }
+
   // ---- New Event modal ----
   function openNewEventModal(){
     const today = new Date().toISOString().slice(0,10);
+    // Default the SVS prep week to the next Monday (or today, if today is Monday).
+    const nextMonday  = nextMondayIso_();
+    const nextSaturday = shiftIso_(nextMonday, 5);
     const body = `
       <style>
         .evt-form label { display:block; font-size:13px; font-weight:600; color:#333; margin-bottom:4px; }
@@ -2781,14 +3474,14 @@
         }
         .evt-form .field { background:#fafbfc; padding:12px; border-radius:8px; border:1px solid #eceef2; }
         .evt-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        .evt-hint { font-size:12px; color:#6b7280; margin-top:4px; font-weight:400; }
+        .evt-hint { font-size:12px; color:#4b5563; margin-top:4px; font-weight:400; }
         .evt-type-preview {
           display:flex; gap:10px; margin-top:8px;
         }
         .evt-type-chip {
           flex:1; padding:10px; border-radius:8px; text-align:center; font-weight:600; font-size:13px;
           border:2px solid transparent; cursor:pointer; transition:all 0.15s;
-          color:#fff; opacity:0.55;
+          color:#fff; opacity:0.88;
         }
         .evt-type-chip.active { opacity:1; border-color:#111; transform:scale(1.03); }
         .evt-type-chip.canyon  { background:linear-gradient(135deg,#c97a1a,#7a3f00); }
@@ -2806,10 +3499,26 @@
           <input type="hidden" id="newEventType" value="" />
         </div>
 
-        <div class="field">
+        <div class="field" id="singleDateField">
           <label>Event Date</label>
           <input type="date" id="newEventDate" value="${today}" />
           <div class="evt-hint">When the event happens — used to remind you to mark attendance.</div>
+        </div>
+
+        <!-- SVS runs across a week: prep Mon–Fri, battle on Saturday -->
+        <div id="svsDateField" style="display:none;">
+          <div class="evt-grid2">
+            <div class="field">
+              <label>Prep Start (Monday)</label>
+              <input type="date" id="newPrepStart" value="${nextMonday}" onchange="syncSvsDates()" />
+              <div class="evt-hint">Prep runs Monday to Friday from this date.</div>
+            </div>
+            <div class="field">
+              <label>Battle Day (Saturday)</label>
+              <input type="date" id="newBattleDate" value="${nextSaturday}" />
+              <div class="evt-hint">Filled in for you — change it if your battle lands elsewhere.</div>
+            </div>
+          </div>
         </div>
 
         <!-- Single time (for SVS) -->
@@ -2851,31 +3560,53 @@
     const isSplit = (t === "Canyon" || t === "Foundry");
     document.getElementById("splitTimeField").style.display  = isSplit ? "" : "none";
     document.getElementById("singleTimeField").style.display = isSplit ? "none" : "";
+    // SVS uses a prep week + battle day instead of a single event date.
+    const isSvs = (t === "SVS");
+    document.getElementById("svsDateField").style.display    = isSvs ? "" : "none";
+    document.getElementById("singleDateField").style.display = isSvs ? "none" : "";
     // Also re-theme the modal header to match
     applyModalTheme(t);
   }
 
-  async function createNewEvent(){
-    const type = document.getElementById("newEventType").value;
-    const date = document.getElementById("newEventDate").value;
-    const notes = document.getElementById("newEventNotes").value.trim();
-    if (!type){ setModalMsg("Please pick an event type."); return; }
-    if (!date){ setModalMsg("Please pick a date."); return; }
+  async function createNewEvent()
+  {
+    const type = document.getElementById('newEventType').value;
+    const date = document.getElementById('newEventDate').value;
+    const notes = document.getElementById('newEventNotes').value.trim();
+
+    if (!type) return setModalMsg('Please pick an event type.');
 
     const payload = { Type: type, EventDate: date, Notes: notes };
-    if (type === "Canyon" || type === "Foundry"){
-      payload.Legion1Time = (document.getElementById("newLegion1Time").value || "").trim();
-      payload.Legion2Time = (document.getElementById("newLegion2Time").value || "").trim();
-    } else {
-      payload.EventTime = (document.getElementById("newEventTime").value || "").trim();
+
+    if (type === 'SVS') {
+      const prepStart = document.getElementById('newPrepStart').value;
+      const battle    = document.getElementById('newBattleDate').value;
+      if (!prepStart) return setModalMsg('Please pick the Monday your prep week starts.');
+      payload.PrepStartDate = prepStart;
+      payload.PrepEndDate   = shiftIso_(prepStart, 4);
+      payload.BattleDate    = battle || shiftIso_(prepStart, 5);
+      payload.EventDate     = prepStart;   // keeps sorting/back-compat working
+    } else if (!date) {
+      return setModalMsg('Please pick a date.');
     }
 
+    if (type === 'Canyon' || type === 'Foundry') {
+      payload.Legion1Time = document.getElementById('newLegion1Time').value.trim().toUpperCase();
+      payload.Legion2Time = document.getElementById('newLegion2Time').value.trim().toUpperCase();
+    } else {
+      payload.EventTime = document.getElementById('newEventTime').value.trim().toUpperCase();
+    }
+
+    const timeError = validateEventTimes(type, payload);
+    if (timeError) return setModalMsg(timeError);
+
     if (!checkEventPassword()) return;
-    setModalMsg("Creating\u2026");
-    const r = await apiPost("event_create", payload);
-    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    setModalMsg('Creating…');
+
+    const r = await apiPost('event_create', payload);
+    if (!r.ok) return setModalMsg('Error: ' + r.error);
+
     await loadEvents();
-    // Jump straight into the registration / score editor for this new event
     openEventEditor(r.EventID);
   }
 
@@ -2893,14 +3624,223 @@
     }
   }
 
+  // ---- Read-only event viewer ----
+  // Anyone (including VIEWER) can open this. It shows who was signed up and a
+  // plain Yes/No for whether they showed, with no inputs and no save buttons.
+  async function openEventViewer(eventId){
+    setModalMsg("");
+    // Names come from the roster. If it has not been loaded yet, pull it in
+    // quietly so the view does not show a wall of bare PIDs.
+    if (!Array.isArray(sheetDefaultOrder) || !sheetDefaultOrder.length){
+      try { await loadAll(); } catch (e) {}
+    }
+    const r = await apiGet({ view: "event_detail", event_id: eventId });
+    if (!r.ok){ alert("Error: " + (r.error || "")); return; }
+    const ev = r.event;
+    applyModalTheme(ev.Type);
+
+    if (ev.Type === "SVS") { renderSvsViewer_(r); return; }
+    renderRegViewer_(r);
+  }
+
+  // Canyon / Foundry: signed-up list split by legion, with attendance.
+  function renderRegViewer_(detail){
+    const ev = detail.event;
+    const theme = EVENT_THEMES[ev.Type] || EVENT_THEMES._default;
+
+    // Name lookup from whatever roster is loaded; falls back to the PID.
+    const nameOf = pid => {
+      const src = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder : [];
+      const hit = src.find(m => normPid(m.PID) === normPid(pid));
+      return (hit && hit.Name) ? hit.Name : "";
+    };
+
+    const regs = (detail.registrations || [])
+      .filter(x => String(x.Legion || "").trim() !== "")
+      .map(x => ({
+        PID: x.PID,
+        Name: nameOf(x.PID),
+        Legion: String(x.Legion),
+        // AttendedRaw blank means nobody has marked attendance yet.
+        attRaw: (x.AttendedRaw === undefined ? "" : String(x.AttendedRaw).trim()),
+        attended: !!x.Attended
+      }))
+      .sort((a,b) =>
+        (a.Legion.localeCompare(b.Legion)) ||
+        String(a.Name || "").localeCompare(String(b.Name || ""))
+      );
+
+    if (!regs.length){
+      openModal(`${ev.Type} \u2014 ${fmtDate(ev.EventDate)}`,
+        `<div class="small" style="padding:14px; opacity:.8;">Nobody is signed up for this event yet.</div>`,
+        `<button onclick="closeEventModal()">Close</button>`, ev.Type);
+      return;
+    }
+
+    const yes = regs.filter(r => r.attRaw !== "" && r.attended).length;
+    const no  = regs.filter(r => r.attRaw !== "" && !r.attended).length;
+    const unmarked = regs.filter(r => r.attRaw === "").length;
+
+    const attCell = r => {
+      if (r.attRaw === "") return '<span style="color:#8a8a8a;">Not marked</span>';
+      return r.attended
+        ? '<span style="color:#1a7f3c; font-weight:700;">Yes</span>'
+        : '<span style="color:#a8232f; font-weight:700;">No</span>';
+    };
+
+    const rows = regs.map(r => `
+      <tr>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2;">${esc(r.Name || "\u2014")}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; opacity:.7;">${esc(r.PID)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; text-align:center;">
+          <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px;
+                       background:${theme.pill.bg}; color:${theme.pill.color};">Legion ${esc(r.Legion)}</span>
+        </td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; text-align:center;">${attCell(r)}</td>
+      </tr>`).join("");
+
+    const l1 = regs.filter(r => r.Legion === "1").length;
+    const l2 = regs.filter(r => r.Legion === "2").length;
+
+    const body = `
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+        ${viewerStat_("Signed up", regs.length, theme.accent)}
+        ${viewerStat_("Legion 1", l1, theme.accent)}
+        ${viewerStat_("Legion 2", l2, theme.accent)}
+        ${viewerStat_("Showed up", yes, "#1a7f3c")}
+        ${viewerStat_("No-shows", no, "#a8232f")}
+        ${unmarked ? viewerStat_("Not marked", unmarked, "#6b7280") : ""}
+      </div>
+      <input id="viewFilter" placeholder="Filter by name or PID\u2026" oninput="filterViewerTable()"
+             style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #c8cad1; border-radius:6px; font-size:14px;" />
+      <div style="max-height:52vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
+        <table id="viewerTable" style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead style="background:#f2f2f2; position:sticky; top:0;">
+            <tr>
+              <th style="padding:8px; text-align:left;">Name</th>
+              <th style="padding:8px; text-align:left;">PID</th>
+              <th style="padding:8px;">Legion</th>
+              <th style="padding:8px;">Showed up</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:8px; color:#555;">Read-only view. Use <b>Open</b> to make changes.</div>`;
+
+    openModal(`${ev.Type} \u2014 ${fmtDate(ev.EventDate)}`, body,
+      `<button onclick="closeEventModal()">Close</button>`, ev.Type);
+  }
+
+  // SVS: who took part, and their prep / battle numbers.
+  function renderSvsViewer_(detail){
+    const ev = detail.event;
+    const theme = EVENT_THEMES.SVS;
+
+    const nameOf = pid => {
+      const src = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder : [];
+      const hit = src.find(m => normPid(m.PID) === normPid(pid));
+      return (hit && hit.Name) ? hit.Name : "";
+    };
+    const isStar = pid => {
+      const src = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder : [];
+      const hit = src.find(m => normPid(m.PID) === normPid(pid));
+      return hit ? isSquad_(hit) : false;
+    };
+    const num = v => {
+      const n = (v === null || v === undefined || String(v).trim() === "" ||
+                 String(v).trim().toUpperCase() === "NA") ? null : Number(String(v).replace(/,/g, ""));
+      return (n === null || !isFinite(n)) ? '<span style="color:#8a8a8a;">\u2014</span>' : n.toLocaleString();
+    };
+
+    const scores = (detail.scores || [])
+      .map(x => ({ ...x, Name: nameOf(x.PID), star: isStar(x.PID) }))
+      .sort((a,b) => String(a.Name || "").localeCompare(String(b.Name || "")));
+
+    if (!scores.length){
+      openModal(`SVS \u2014 ${fmtDate(ev.PrepStartDate || ev.EventDate)}`,
+        `<div class="small" style="padding:14px; opacity:.8;">No scores logged for this SVS yet.</div>`,
+        `<button onclick="closeEventModal()">Close</button>`, "SVS");
+      return;
+    }
+
+    const took = scores.filter(x => x.Participated === true).length;
+
+    const rows = scores.map(x => `
+      <tr>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2;">
+          ${x.star ? '<span style="color:#d9a406;">\u2605</span> ' : ""}${esc(x.Name || "\u2014")}
+        </td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; opacity:.7;">${esc(x.PID)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; text-align:center;">
+          ${x.Participated === true
+            ? '<span style="color:#1a7f3c; font-weight:700;">Yes</span>'
+            : '<span style="color:#a8232f; font-weight:700;">No</span>'}
+        </td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; text-align:right;">${num(x.PrepScore)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #eceef2; text-align:right; font-weight:600;">${num(x.BattleScore)}</td>
+      </tr>`).join("");
+
+    const prepRange = (ev.PrepStartDate || ev.PrepEndDate)
+      ? `${esc(fmtDate(ev.PrepStartDate))} \u2013 ${esc(fmtDate(ev.PrepEndDate))}`
+      : esc(fmtDate(ev.EventDate));
+
+    const body = `
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+        ${viewerStat_("Prep week", prepRange, theme.accent)}
+        ${viewerStat_("Battle day", ev.BattleDate ? esc(fmtDate(ev.BattleDate)) : "\u2014", theme.accent)}
+        ${viewerStat_("Took part", `${took} of ${scores.length}`, "#1a7f3c")}
+      </div>
+      <input id="viewFilter" placeholder="Filter by name or PID\u2026" oninput="filterViewerTable()"
+             style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #c8cad1; border-radius:6px; font-size:14px;" />
+      <div style="max-height:52vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
+        <table id="viewerTable" style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead style="background:#f2f2f2; position:sticky; top:0;">
+            <tr>
+              <th style="padding:8px; text-align:left;">Name</th>
+              <th style="padding:8px; text-align:left;">PID</th>
+              <th style="padding:8px;">Took part</th>
+              <th style="padding:8px; text-align:right;">Prep</th>
+              <th style="padding:8px; text-align:right;">Battle</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:8px; color:#555;">Read-only view. Use <b>Open</b> to log or change scores.</div>`;
+
+    openModal(`SVS \u2014 ${fmtDate(ev.PrepStartDate || ev.EventDate)}`, body,
+      `<button onclick="closeEventModal()">Close</button>`, "SVS");
+  }
+
+  // Small stat tile used by both viewers.
+  function viewerStat_(label, value, accent){
+    return `<div style="flex:1; min-width:110px; padding:8px 12px; border-radius:8px; background:#fff; border:1px solid ${accent};">
+        <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:${accent};">${esc(label)}</div>
+        <div style="font-size:15px; font-weight:700; color:#111;">${value}</div>
+      </div>`;
+  }
+
+  function filterViewerTable(){
+    const q = (document.getElementById("viewFilter").value || "").toLowerCase();
+    document.querySelectorAll("#viewerTable tbody tr").forEach(tr => {
+      const txt = tr.innerText.toLowerCase();
+      tr.style.display = !q || txt.includes(q) ? "" : "none";
+    });
+  }
+
   // ---- Canyon / Foundry registration + attendance editor ----
   function renderRegEditor(detail){
     const ev = detail.event;
     const existing = {};
-    (detail.registrations || []).forEach(x => { existing[x.PID] = x; });
+    (detail.registrations || []).forEach(x => { existing[normPid(x.PID)] = x; });
 
-    // Roster comes from currentList (loaded by loadAll)
-    const roster = (typeof currentList !== "undefined" && currentList) ? currentList : [];
+    // Canyon and Foundry are TBD-only events, so the editor lists TBD members
+    // (plus anyone already registered for this event, even if they have since
+    // moved out of TBD — otherwise saving would silently drop their row).
+    // Built from the full roster, never the filtered table.
+    const full = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder : [];
+    const roster = full.filter(m => allianceGroup_(m) === "TBD" || existing[normPid(m.PID)]);
     if (!roster.length){
       openModal(`${ev.Type} — ${fmtDate(ev.EventDate)}`,
         '<div style="color:#a00;">Roster not loaded. Click “Load Players” first.</div>',
@@ -2915,7 +3855,7 @@
     const showAttendance = pastEvent || String(ev.Status || "") === "Complete";
 
     const rows = roster.slice().sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||""))).map(m => {
-      const ex = existing[String(m.PID)] || {};
+      const ex = existing[normPid(m.PID)] || {};
       const inL1 = ex.Legion === "1";
       const inL2 = ex.Legion === "2";
       const att = ex.AttendedRaw === "" ? "yes" : (ex.Attended ? "yes" : "no");
@@ -2971,6 +3911,7 @@
 
     const footer = `
       <button onclick="closeEventModal()">Close</button>
+      ${eventDeleteBtnHtml()}
       <button onclick="saveRegistrations()">Save Registrations</button>
       ${showAttendance ? '<button class="primary" onclick="saveAttendance()">Save Attendance</button>' : ""}`;
 
@@ -3025,59 +3966,265 @@
   }
 
   // ---- SVS scores editor ----
+  //
+  // Prep runs Monday-Friday and can be logged two ways per player:
+  //   Daily  -> five day boxes, total is calculated for you
+  //   Total  -> one box for the whole prep week
+  // Battle is the Saturday score. "Took part" separates a genuine zero from
+  // a player who sat the SVS out entirely.
+  //
+  // IMPORTANT: this always builds from the FULL roster, never the filtered
+  // table, and the backend merges by PID -- so saving can never wipe scores
+  // for players who were not on screen.
   function renderSvsEditor(detail){
     const ev = detail.event;
     const existing = {};
-    (detail.scores || []).forEach(x => { existing[x.PID] = x; });
+    (detail.scores || []).forEach(x => { existing[normPid(x.PID)] = x; });
 
-    const roster = (typeof currentList !== "undefined" && currentList) ? currentList : [];
+    const roster = svsRosterForEvent_(detail);
     if (!roster.length){
-      openModal(`SVS — ${fmtDate(ev.EventDate)}`,
-        '<div style="color:#a00;">Roster not loaded. Click “Load Players” first.</div>',
+      openModal(`SVS \u2014 ${fmtDate(ev.PrepStartDate || ev.EventDate)}`,
+        '<div style="color:#a00;">Roster not loaded. Click \u201cLoad Players\u201d first.</div>',
         `<button onclick="closeEventModal()">Close</button>`);
       return;
     }
 
-    const rows = roster.slice().sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||""))).map(m => {
-      const ex = existing[String(m.PID)] || {};
-      const prep = ex.PrepScore !== undefined && ex.PrepScore !== null && String(ex.PrepScore) !== "NA" ? ex.PrepScore : "";
-      const batt = ex.BattleScore !== undefined && ex.BattleScore !== null && String(ex.BattleScore) !== "NA" ? ex.BattleScore : "";
-      return `
-        <tr data-pid="${esc(m.PID)}">
-          <td style="padding:4px;">${esc(m.Name || "")}</td>
-          <td style="padding:4px; opacity:.7;">${esc(m.PID)}</td>
-          <td style="padding:4px;"><input class="svsPrep" type="number" value="${esc(prep)}" placeholder="NA" style="width:110px; padding:4px;" /></td>
-          <td style="padding:4px;"><input class="svsBattle" type="number" value="${esc(batt)}" placeholder="NA" style="width:110px; padding:4px;" /></td>
-        </tr>`;
-    }).join("");
+    const DAY_KEYS = ["Prep_Mon","Prep_Tue","Prep_Wed","Prep_Thu","Prep_Fri"];
+    const DAY_LABELS = ["Mon","Tue","Wed","Thu","Fri"];
+
+    const rows = roster.slice()
+      .sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||"")))
+      .map(m => {
+        const ex = existing[normPid(m.PID)] || {};
+
+        // Does this row have any per-day prep stored?
+        const hasDaily = DAY_KEYS.some(k => svsCellVal_(ex[k]) !== "");
+        const hasTotal = svsCellVal_(ex.PrepScore) !== "";
+        const hasBattle = svsCellVal_(ex.BattleScore) !== "";
+
+        // Mode: trust PrepMode when it is set. Rows saved before the daily
+        // columns existed have a total but no days, so show them in Total mode
+        // instead of dropping the number into a hidden field.
+        const declared = String(ex.PrepMode || "").toLowerCase();
+        let mode;
+        if (declared === "total" || declared === "daily") mode = declared;
+        else mode = (hasTotal && !hasDaily) ? "total" : "daily";
+        if (mode === "daily" && !hasDaily && hasTotal) mode = "total";
+
+        // Older rows have no Participated column. If a score was recorded at
+        // all, they clearly took part.
+        const took = (ex.Participated === true) || (ex.Participated === undefined && (hasTotal || hasBattle || hasDaily));
+
+        // Remember whether this row started with data, so a genuine "clear it"
+        // can be told apart from a row that was simply never filled in.
+        const hadData = took || hasDaily || hasTotal || hasBattle;
+        const star = isSquad_(m) ? '<span style="color:#ffc83d;">\u2605</span> ' : "";
+
+        const dayInputs = DAY_KEYS.map((k, i) => {
+          const v = svsCellVal_(ex[k]);
+          return `<input class="svsDay" data-day="${k}" type="number" value="${esc(v)}"
+                         title="${DAY_LABELS[i]} prep"
+                         placeholder="${DAY_LABELS[i]}"
+                         style="width:78px; padding:4px;" />`;
+        }).join(" ");
+
+        const totalVal = svsCellVal_(ex.PrepScore);
+
+        return `
+          <tr data-pid="${esc(m.PID)}" data-mode="${mode}" data-had="${hadData ? "1" : "0"}">
+            <td style="padding:6px; white-space:nowrap;">${star}${esc(m.Name || "")}</td>
+            <td style="padding:6px; opacity:.7; white-space:nowrap;">${esc(m.PID)}</td>
+            <td style="padding:6px; text-align:center;">
+              <input type="checkbox" class="svsTook" ${took ? "checked" : ""} title="Took part in this SVS" />
+            </td>
+            <td style="padding:6px;">
+              <label class="small" style="display:flex; gap:6px; align-items:center; white-space:nowrap;">
+                <input type="checkbox" class="svsTotalMode" ${mode === "total" ? "checked" : ""} />
+                Total only
+              </label>
+            </td>
+            <td style="padding:6px;">
+              <div class="svsDaily" style="display:${mode === "total" ? "none" : "flex"}; gap:4px; flex-wrap:wrap;">
+                ${dayInputs}
+              </div>
+              <div class="svsTotalWrap" style="display:${mode === "total" ? "block" : "none"};">
+                <input class="svsPrepTotal" type="number" value="${esc(totalVal)}" placeholder="Prep total"
+                       style="width:130px; padding:4px;" />
+              </div>
+            </td>
+            <td style="padding:6px; text-align:right; white-space:nowrap;">
+              <span class="svsPrepCalc" style="font-weight:600;">\u2014</span>
+            </td>
+            <td style="padding:6px;">
+              <input class="svsBattle" type="number" value="${esc(svsCellVal_(ex.BattleScore))}" placeholder="NA"
+                     style="width:120px; padding:4px;" />
+            </td>
+          </tr>`;
+      }).join("");
+
+    const prepRange = (ev.PrepStartDate || ev.PrepEndDate)
+      ? `${esc(fmtDate(ev.PrepStartDate))} \u2013 ${esc(fmtDate(ev.PrepEndDate))}`
+      : esc(fmtDate(ev.EventDate));
+    const battleTxt = ev.BattleDate ? esc(fmtDate(ev.BattleDate)) : '<span style="opacity:.5;">not set</span>';
+    const theme = EVENT_THEMES.SVS;
 
     const body = `
-      <div class="small" style="margin-bottom:8px;">
-        <b>SVS</b> — <b>Date:</b> ${esc(fmtDate(ev.EventDate))} &nbsp; <b>Time:</b> ${esc(ev.EventTime || "")}
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+        <div style="flex:1; min-width:200px; padding:10px 12px; border-radius:8px; background:#fff; border:1px solid ${theme.accent};">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:${theme.accent};">Prep Week (Mon\u2013Fri)</div>
+          <div style="font-size:15px; font-weight:600;">${prepRange}</div>
+        </div>
+        <div style="flex:1; min-width:200px; padding:10px 12px; border-radius:8px; background:#fff; border:1px solid ${theme.accent};">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:${theme.accent};">Battle Day (Sat)</div>
+          <div style="font-size:15px; font-weight:600;">${battleTxt}</div>
+        </div>
       </div>
-      <div class="small" style="margin-bottom:8px; opacity:.8;">
-        Enter Prep and Battle scores. Blank = NA.
+      <div class="small" style="margin-bottom:8px; color:#555;">
+        Tick <b>Took part</b> for everyone who joined. Log prep day by day and the total is worked out for you,
+        or tick <b>Total only</b> to enter one number for the week. Blank stays as NA.
       </div>
-      <input id="svsFilter" placeholder="Filter by name or PID\u2026" oninput="filterSvsTable()" style="width:100%; padding:6px; margin-bottom:8px;" />
-      <div style="max-height:55vh; overflow:auto; border:1px solid #444; border-radius:6px;">
+      <div class="row" style="gap:8px; margin-bottom:8px;">
+        <input id="svsFilter" placeholder="Filter by name or PID\u2026" oninput="filterSvsTable()"
+               style="flex:1; min-width:180px; padding:6px;" />
+        <button type="button" class="subtle" onclick="svsCheckAllVisible(true)">Tick all shown</button>
+        <button type="button" class="subtle" onclick="svsCheckAllVisible(false)">Untick all shown</button>
+      </div>
+      <div style="max-height:52vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
       <table id="svsTable" style="width:100%; border-collapse:collapse; font-size:14px;">
-        <thead style="background:#f2f2f2; position:sticky; top:0;">
+        <thead style="background:#f2f2f2; position:sticky; top:0; z-index:1;">
           <tr>
-            <th style="padding:6px; text-align:left;">Name</th>
-            <th style="padding:6px; text-align:left;">PID</th>
-            <th style="padding:6px; text-align:left;">Prep Score</th>
-            <th style="padding:6px; text-align:left;">Battle Score</th>
+            <th style="padding:8px; text-align:left;">Name</th>
+            <th style="padding:8px; text-align:left;">PID</th>
+            <th style="padding:8px;">Took part</th>
+            <th style="padding:8px;">Entry</th>
+            <th style="padding:8px; text-align:left;">Prep (Mon\u2013Fri)</th>
+            <th style="padding:8px; text-align:right;">Prep total</th>
+            <th style="padding:8px; text-align:left;">Battle</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      </div>`;
+      </div>
+      <div id="svsSummary" class="small" style="margin-top:8px; color:#555;"></div>`;
 
     const footer = `
       <button onclick="closeEventModal()">Close</button>
+      ${eventDeleteBtnHtml()}
       <button class="primary" onclick="saveSvsScores()">Save Scores</button>`;
 
-    openModal(`SVS — ${fmtDate(ev.EventDate)}`, body, footer, "SVS");
+    openModal(`SVS \u2014 ${fmtDate(ev.PrepStartDate || ev.EventDate)}`, body, footer, "SVS");
+    wireSvsEditor_();
+  }
+
+  // Which players should the SVS editor list? SVS covers the whole database,
+  // so this is the full roster plus anyone who already has a score row.
+  function svsRosterForEvent_(detail){
+    const full = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder.slice() : [];
+    const seen = new Set(full.map(m => normPid(m.PID)));
+    (detail.scores || []).forEach(sc => {
+      const pid = normPid(sc.PID);
+      if (pid && !seen.has(pid)){
+        // Scored previously but no longer on the roster - keep them visible so
+        // their score is not silently dropped on the next save.
+        full.push({ PID: sc.PID, Name: "(not on roster)" });
+        seen.add(pid);
+      }
+    });
+    return full;
+  }
+
+  // Turn a stored score cell into something an <input type=number> accepts.
+  function svsCellVal_(v){
+    if (v === undefined || v === null) return "";
+    const s = String(v).trim();
+    if (!s || s.toUpperCase() === "NA") return "";
+    const n = Number(s.replace(/,/g, ""));
+    return isFinite(n) ? String(n) : "";
+  }
+
+  // Live wiring: recalc prep totals, and swap between daily and total entry.
+  function wireSvsEditor_(){
+    const table = document.getElementById("svsTable");
+    if (!table) return;
+
+    table.querySelectorAll("tbody tr").forEach(tr => {
+      const modeChk = tr.querySelector(".svsTotalMode");
+      if (modeChk){
+        modeChk.addEventListener("change", () => {
+          const useTotal = modeChk.checked;
+          tr.setAttribute("data-mode", useTotal ? "total" : "daily");
+          tr.querySelector(".svsDaily").style.display = useTotal ? "none" : "flex";
+          tr.querySelector(".svsTotalWrap").style.display = useTotal ? "block" : "none";
+          svsRecalcRow_(tr);
+        });
+      }
+      tr.querySelectorAll(".svsDay, .svsPrepTotal, .svsBattle").forEach(inp => {
+        inp.addEventListener("input", () => svsRecalcRow_(tr));
+      });
+      // Entering any score implies the player took part.
+      tr.querySelectorAll(".svsDay, .svsPrepTotal, .svsBattle").forEach(inp => {
+        inp.addEventListener("change", () => {
+          if (String(inp.value).trim() !== ""){
+            const took = tr.querySelector(".svsTook");
+            if (took && !took.checked){ took.checked = true; svsUpdateSummary_(); }
+          }
+        });
+      });
+      const tookChk = tr.querySelector(".svsTook");
+      if (tookChk) tookChk.addEventListener("change", svsUpdateSummary_);
+      svsRecalcRow_(tr, true);
+    });
+    svsUpdateSummary_();
+  }
+
+  // Recompute one row's prep total display.
+  function svsRecalcRow_(tr, quiet){
+    const out = tr.querySelector(".svsPrepCalc");
+    const useTotal = tr.getAttribute("data-mode") === "total";
+    let total = null;
+
+    if (useTotal){
+      const v = tr.querySelector(".svsPrepTotal").value.trim();
+      total = v === "" ? null : Number(v);
+    } else {
+      tr.querySelectorAll(".svsDay").forEach(d => {
+        const v = d.value.trim();
+        if (v === "") return;
+        const n = Number(v);
+        if (isFinite(n)) total = (total === null ? 0 : total) + n;
+      });
+    }
+
+    if (out){
+      out.textContent = (total === null || !isFinite(total)) ? "\u2014" : total.toLocaleString();
+      out.style.color = (total === null) ? "#999" : "#1e5f34";
+    }
+    if (!quiet) svsUpdateSummary_();
+    return total;
+  }
+
+  // Footer summary: how many players are marked as taking part.
+  function svsUpdateSummary_(){
+    const box = document.getElementById("svsSummary");
+    if (!box) return;
+    const rows = document.querySelectorAll("#svsTable tbody tr");
+    let took = 0, scored = 0;
+    rows.forEach(tr => {
+      if (tr.querySelector(".svsTook")?.checked) took++;
+      const battle = tr.querySelector(".svsBattle").value.trim();
+      if (battle !== "") scored++;
+    });
+    box.textContent = `${took} of ${rows.length} marked as taking part \u00b7 ${scored} battle score(s) entered.`;
+  }
+
+  // Bulk tick / untick "Took part" for whatever rows the filter is showing.
+  function svsCheckAllVisible(state){
+    document.querySelectorAll("#svsTable tbody tr").forEach(tr => {
+      if (tr.style.display === "none") return;
+      const chk = tr.querySelector(".svsTook");
+      if (chk) chk.checked = !!state;
+    });
+    svsUpdateSummary_();
   }
 
   function filterSvsTable(){
@@ -3091,29 +4238,81 @@
   async function saveSvsScores(){
     if (!CURRENT_EVENT) return;
     if (!checkEventPassword()) return;
+
     const scores = [];
+    // Every row is submitted, including the ones the filter is hiding.
     document.querySelectorAll("#svsTable tbody tr").forEach(tr => {
       const pid = tr.getAttribute("data-pid");
-      const prep = tr.querySelector(".svsPrep").value.trim();
-      const batt = tr.querySelector(".svsBattle").value.trim();
-      if (prep === "" && batt === "") return; // skip completely blank rows
-      scores.push({ PID: pid, PrepScore: prep || "NA", BattleScore: batt || "NA" });
+      const useTotal = tr.getAttribute("data-mode") === "total";
+      const took = !!tr.querySelector(".svsTook")?.checked;
+      const battle = tr.querySelector(".svsBattle").value.trim();
+
+      const obj = {
+        PID: pid,
+        Participated: took,
+        PrepMode: useTotal ? "total" : "daily",
+        BattleScore: battle === "" ? "" : battle
+      };
+
+      if (useTotal){
+        const t = tr.querySelector(".svsPrepTotal").value.trim();
+        obj.PrepScore = t === "" ? "" : t;
+      } else {
+        tr.querySelectorAll(".svsDay").forEach(d => {
+          obj[d.getAttribute("data-day")] = d.value.trim();
+        });
+      }
+
+      const hasDay = Object.keys(obj).some(k => k.indexOf("Prep_") === 0 && obj[k] !== "");
+      const isEmpty = !took && !hasDay && !obj.PrepScore && !obj.BattleScore;
+      const hadData = tr.getAttribute("data-had") === "1";
+
+      if (isEmpty){
+        // Only ask the backend to delete a row if this player HAD data and the
+        // user has just emptied it. An empty row that was always empty is left
+        // alone, so a save can never remove someone by accident.
+        if (!hadData) return;
+        obj.Clear = true;
+      }
+
+      scores.push(obj);
     });
-    setModalMsg(`Saving ${scores.length} score row(s)\u2026`);
+
+    const cleared = scores.filter(o => o.Clear).length;
+    const withData = scores.length - cleared;
+    setModalMsg(`Saving ${withData} player row(s)${cleared ? ` and clearing ${cleared}` : ""}\u2026`);
     const r = await apiPost("svs_scores_save", { EventID: CURRENT_EVENT.event.EventID, Scores: scores });
     if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
-    setModalMsg(`Saved ${r.count} score row(s).`);
+    setModalMsg(`Saved ${r.count} row(s). ${r.rowsForEvent} player(s) now logged for this SVS.`);
     await loadEvents();
   }
 
-  async function deleteEvent(eventId){
-    const ev = EVENTS_CACHE.find(e => e.EventID === eventId);
-    const label = ev ? `${ev.Type} on ${fmtDate(ev.EventDate)}` : eventId;
-    if (!roleAllows(currentRole(), "MASTER")) { alert("Only MASTER can delete events."); openSignIn(); return; }
-    if (!confirm(`Delete event: ${label}?\nThis also removes all registrations / scores for this event.`)) return;
-    const r = await apiPost("event_delete", { EventID: eventId });
-    if (!r.ok){ alert("Error: " + (r.error || "")); return; }
-    await loadEvents();
+  // Returns the Delete Event button HTML, but only for MASTER. Empty string otherwise,
+  // so ADMIN never sees a delete control in the event modal.
+  function eventDeleteBtnHtml(){
+    return roleAllows(currentRole(), "MASTER")
+      ? '<button class="warn" style="background:#b02a2a; color:#fff;" onclick="deleteEvent()">Delete Event</button>'
+      : "";
+  }
+
+  // Hard-delete the currently open event (and its registrations/scores). MASTER only.
+  async function deleteEvent(){
+    if (!CURRENT_EVENT || !CURRENT_EVENT.event) { setModalMsg("No event is open."); return; }
+    if (!requirePassword("delete an event", "MASTER")) return;
+
+    const id = CURRENT_EVENT.event.EventID;
+    if (!confirm(`Permanently delete this event (${id}) and all its registrations and scores?\nThis cannot be undone.`)) return;
+
+    setModalMsg("Deleting event...");
+    try {
+      const r = await apiPost("event_delete", { EventID: id });
+      if (!r.ok){ setModalMsg("Delete failed: " + (r.error || "")); return; }
+      closeEventModal();
+      await loadEvents();
+      setMsg(`🗑️ Deleted event ${id}.`);
+    } catch (err) {
+      setModalMsg("Delete failed (network): " + err.message);
+    }
   }
 
   // Expose functions used by inline onclick handlers
@@ -3121,6 +4320,10 @@
   window.openNewEventModal = openNewEventModal;
   window.createNewEvent = createNewEvent;
   window.openEventEditor = openEventEditor;
+  window.openEventViewer = openEventViewer;
+  window.filterViewerTable = filterViewerTable;
+  window.setEventTab = setEventTab;
+  window.renderEventsList = renderEventsList;
   window.closeEventModal = closeEventModal;
   window.saveRegistrations = saveRegistrations;
   window.saveAttendance = saveAttendance;
@@ -3128,6 +4331,13 @@
   window.deleteEvent = deleteEvent;
   window.filterRegTable = filterRegTable;
   window.filterSvsTable = filterSvsTable;
+  window.svsCheckAllVisible = svsCheckAllVisible;
+  window.syncSvsDates = syncSvsDates;
+  window.toggleSquad = toggleSquad;
+  window.loadSvsLeaderboard = loadSvsLeaderboard;
+  window.renderSvsLeaderboard = renderSvsLeaderboard;
+  window.dismissBanner = dismissBanner;
+  window.dismissManualNote = dismissManualNote;
   window.selectEventType = selectEventType;
   // Hero editor
   window.openHeroEditor = openHeroEditor;
@@ -3141,6 +4351,14 @@
   window.closeSignIn = closeSignIn;
   window.submitSignIn = submitSignIn;
   window.signOut = signOut;
+
+  // Escape closes finished result banners (and the event modal if it is open).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const backdrop = document.getElementById("eventModalBackdrop");
+    if (backdrop && backdrop.style.display !== "none"){ closeEventModal(); return; }
+    dismissAllBanners();
+  });
 
   loadConfig();
   initSorting();
