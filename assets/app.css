@@ -1,0 +1,754 @@
+    :root
+    {
+      --bg-deep:#071427;
+      --bg-mid:#0d1f3a;
+      --ice:#4fd1ff;
+      --ice-soft:#b9ecff;
+      --glow:#4fd1ff44;
+      --frost:rgba(0,0,0,.45);
+      --border:rgba(255,255,255,.14);
+
+      --text:#eef7ff;
+      --text-soft:#d6e8f8;
+      --text-muted:#b8cfe3;
+      --text-dim:#97aec2;
+
+      --danger:#ff5c5c;
+    }
+    body
+   {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      color: var(--text);
+
+      background:
+        radial-gradient(1000px 600px at 15% 0%, var(--glow), transparent 60%),
+        radial-gradient(800px 500px at 85% 10%, #4fd1ff22, transparent 55%),
+        linear-gradient(var(--bg-mid), var(--bg-deep));
+    }
+
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin: 8px 0; align-items: center; }
+    input, select
+    {
+      padding:8px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+    }
+
+    /* Make the open dropdown list readable. The closed <select> keeps the dark
+       frosted look, but the option list (rendered by the OS) needs solid,
+       high-contrast colors so it isn't light-gray text on gray. */
+    select {
+      background-color:#0d1f3a;
+      color:#eef7ff;
+    }
+    select option,
+    select optgroup {
+      background-color:#0d1f3a;
+      color:#eef7ff;
+    }
+    select option:checked,
+    select option:hover {
+      background-color:#1c3a63;
+      color:#ffffff;
+    }
+
+    button
+    {
+      padding: 8px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      color:white;
+
+      background: linear-gradient(
+        180deg,
+        rgba(79,209,255,.35),
+        rgba(79,209,255,.12)
+      );
+
+      cursor:pointer;
+    }
+
+    button:hover
+    {
+      filter:brightness(1.15);
+      box-shadow:0 0 10px var(--glow);
+    }
+
+    table
+    {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    th, td
+    {
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 10px;
+      color: #eaf6ff;
+      text-align: center;   /* center everything by default */
+    }
+
+    td:first-child,
+    th:first-child
+    {
+      text-align: left;     /* Name column left aligned */
+    }
+    
+    th
+    {
+      background: rgba(255,255,255,.08);
+      color: #b9ecff;
+      font-weight: 800;
+    }
+
+    tbody tr:hover
+    {
+      background: rgba(79,209,255,.08);
+    }
+
+    /* Checkbox column */
+    td.sel-col, th.sel-col
+    {
+      width: 34px;
+      text-align: center;
+      padding: 6px;
+    }
+
+    tbody tr.selected
+    {
+      background: rgba(79,209,255,.18);
+    }
+
+    input[type="checkbox"]
+    {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #4fd1ff;
+    }
+
+    .btn-group
+    {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .spacer { flex: 1; }
+
+    .warn
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(255,180,80,.45),
+        rgba(255,180,80,.15)
+      );
+    }
+
+    .card
+    {
+      background: var(--frost);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      margin-top:12px;
+      backdrop-filter: blur(8px);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .danger
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(255,92,92,.45),
+        rgba(255,92,92,.15)
+      );
+    }
+    .primary
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(56,180,100,.45),
+        rgba(56,180,100,.15)
+      );
+    }
+
+    /* Profile card */
+    .profile-grid
+    {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px 16px;
+      margin-top: 10px;
+    }
+    .profile-field
+    {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .profile-label
+    {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .profile-value
+    {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .profile-sub-title
+    {
+      margin: 14px 0 6px;
+      color: var(--ice-soft);
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+    .profile-empty
+    {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 13px;
+    }
+    .profile-table
+    {
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    .profile-table th, .profile-table td
+    {
+      padding: 6px 8px;
+    }
+    .status-pill
+    {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-attended  { background: rgba(80,220,120,.25); color:#bff5c7; }
+    .status-missed    { background: rgba(255,92,92,.25); color:#ffc8c8; }
+    .status-notreg    { background: rgba(255,180,80,.22); color:#ffe2b0; }
+    .status-notactive { background: rgba(159,182,212,.22); color:#c7d7ea; }
+    .status-other     { background: rgba(79,209,255,.22); color:#c5ecff; }
+
+    .yes-badge { color:#bff5c7; font-weight:700; }
+    .no-badge  { color:#ffc8c8; font-weight:700; }
+    .na-badge  { color:var(--muted); font-style:italic; }
+    /* Troop tier badges */
+    .tier-badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:700; }
+    .tier-regular { background:#334155; color:#dbe6f5; }
+    .tier-helios  { background:#1f5a8a; color:#cfe6ff; }
+    .tier-exalted { background:#6d4ab8; color:#eddcff; }
+
+    /* Alliance tab bar */
+    .tab-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px; }
+    .tab-btn {
+      padding:6px 14px; border-radius:10px 10px 0 0; border:1px solid transparent;
+      background:rgba(0,0,0,.2); color:var(--text-muted); cursor:pointer; font-size:13px;
+    }
+    .tab-btn:hover { color:var(--text); background:rgba(79,209,255,.12); }
+    .tab-btn.active {
+      background:linear-gradient(180deg, rgba(79,209,255,.35), rgba(79,209,255,.12));
+      color:var(--text); border-color:var(--border); font-weight:700;
+    }
+    .filter-bar { align-items:flex-end; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+    .filter-bar label { display:flex; flex-direction:column; font-size:11px; color:var(--text-dim); gap:2px; }
+
+    /* Profile header (avatar + name block) */
+    .profile-header
+    {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .avatar
+    {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(79,209,255,.45);
+      box-shadow: 0 0 14px rgba(79,209,255,.25);
+      background: rgba(0,0,0,.4);
+    }
+    .avatar.avatar-placeholder
+    {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      color: var(--ice-soft);
+    }
+    .profile-header-text h4
+    {
+      margin: 0;
+      font-size: 22px;
+      color: var(--text);
+    }
+    .profile-header-text .small
+    {
+      margin-top: 2px;
+    }
+
+    /* Smart save button modes */
+    button.mode-add
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(80,220,120,.55),
+        rgba(80,220,120,.18)
+      );
+      border-color: rgba(120,240,160,.45);
+      font-weight: 700;
+    }
+
+    button.mode-update
+    {
+      background: linear-gradient(
+        180deg,
+        rgba(79,209,255,.65),
+        rgba(79,209,255,.20)
+      );
+      border-color: rgba(180,235,255,.55);
+      font-weight: 700;
+    }
+
+    .small
+    {
+      font-size:12px;
+      color:var(--text-muted);
+    }
+
+    .role-bar .role-label
+    {
+      color:var(--text-dim);
+    }
+
+    .part-stat-label
+    {
+      font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;
+    }
+
+    .hero-stats
+    {
+      display:flex;justify-content:center;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;
+    }
+
+    .banner
+    {
+      height:200px;
+      display:flex;
+      border-radius:18px;
+      overflow:hidden;
+      margin-bottom:16px;
+      border:1px solid rgba(255,255,255,.15);
+      box-shadow:0 12px 35px rgba(0,0,0,.35);
+      background:#071427;
+    }
+
+    .banner > div
+    {
+      flex:1;                 /* 👈 equal 3 columns */
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .banner-center
+    {
+      background-image:url("../images/wos-banner.webp");
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+    }
+
+    .banner-side
+    {
+      font-weight:900;
+      font-size:88px;
+      letter-spacing:6px;
+      color:#4fd1ff;
+      text-shadow:0 0 20px rgba(79,209,255,.6);
+      user-select:none;
+    }
+
+    /* ==================== ROLE-BASED ACCESS ==================== */
+    /* Role bar pinned under the banner */
+    .role-bar {
+      display:flex; align-items:center; justify-content:flex-end;
+      gap:10px; padding:8px 14px; margin:6px 0 10px 0;
+      background:#13182a; border:1px solid #263154; border-radius:8px;
+      font-size:13px;
+    }
+    .role-bar .role-label { color:var(--text-dim); }
+    .role-bar .role-badge {
+      display:inline-block; padding:2px 10px; border-radius:999px;
+      font-weight:700; font-size:12px; letter-spacing:0.5px;
+      background:#263154; color:#cfd6e4;
+    }
+    .role-bar .role-badge.VIEWER { background:#2b3144; color:var(--text-muted); }
+    .role-bar .role-badge.PLAYER { background:#1f5a8a; color:#cfe6ff; }
+    .role-bar .role-badge.ADMIN  { background:#8a4a1f; color:#ffcfa8; }
+    .role-bar .role-badge.MASTER { background:#6d1f8a; color:#eec8ff; }
+    .role-bar button {
+      padding:4px 12px; font-size:12px;
+    }
+
+    /* Sign-in modal */
+    #signInBackdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+      z-index:2000; align-items:center; justify-content:center;
+    }
+    #signInModal {
+      background:#1a2038; color:#e8ecf4; border-radius:12px;
+      padding:24px 28px; width:min(420px, 94%);
+      box-shadow:0 10px 40px rgba(0,0,0,0.5);
+      border:1px solid #2f3b5f;
+    }
+    #signInModal h3 { margin:0 0 10px; }
+    #signInModal input[type="password"] {
+      width:100%; padding:10px 12px; margin-top:10px;
+      background:#0e1324; border:1px solid #2f3b5f; color:#fff;
+      border-radius:8px; font-size:14px; box-sizing:border-box;
+    }
+    #signInModal .signin-actions {
+      display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
+    }
+    #signInMsg { margin-top:8px; font-size:13px; min-height:18px; }
+
+    /* Role-gated visibility.
+       Everything is VISIBLE by default. Elements marked .requires-X are hidden
+       unless <body> has the matching .role-<Y> class where Y's rank >= X.
+       We hide with JS in setRoleUI() for simplicity and explicitness. */
+    .role-hidden { display:none !important; }
+    .tab-hidden  { display:none !important; }
+
+/* ---- modal / heroes ---- */
+  /* Force readable contrast for buttons inside the event modal */
+  #eventModal button {
+    color:#111 !important;
+    background:#e8e9ed !important;
+    border:1px solid #c8cad1 !important;
+    padding:8px 14px !important;
+    border-radius:6px !important;
+    font-weight:500 !important;
+    cursor:pointer;
+    margin-left:8px;
+  }
+  #eventModal button:hover { background:#dcdde3 !important; }
+  #eventModal button.primary {
+    color:#fff !important;
+    background:linear-gradient(180deg,#38b464,#2a8e4d) !important;
+    border:1px solid #1e6f3a !important;
+  }
+  #eventModal button.primary:hover { filter:brightness(1.08); }
+  #eventModal button.danger {
+    color:#fff !important;
+    background:linear-gradient(180deg,#e05a5a,#b93838) !important;
+    border:1px solid #8a2020 !important;
+  }
+  #eventModal #eventModalHeader button {
+    /* Restore the close-X button look */
+    color:#fff !important;
+    background:rgba(255,255,255,0.15) !important;
+    border:none !important;
+    padding:0 !important;
+    margin:0 !important;
+    width:34px !important;
+    height:34px !important;
+    border-radius:17px !important;
+  }
+  /* Force readable contrast for table + inputs inside the event modal */
+  #eventModal, #eventModal div, #eventModal p, #eventModal span, #eventModal label {
+    color:#111 !important;
+  }
+  #eventModal table { color:#111 !important; background:#fff !important; border-collapse:collapse; width:100%; }
+  #eventModal thead th {
+    color:#111 !important;
+    background:#eef0f4 !important;
+    border-bottom:2px solid #c8cad1 !important;
+    padding:8px 10px !important;
+    text-align:left;
+    font-weight:600;
+  }
+  #eventModal tbody td {
+    color:#111 !important;
+    background:#fff !important;
+    border-bottom:1px solid #e6e7ec !important;
+    padding:6px 10px !important;
+  }
+  #eventModal tbody tr:nth-child(even) td { background:#fafbfd !important; }
+  #eventModal tbody tr:hover td { background:#f1f5ff !important; }
+  #eventModal .small { color:#555 !important; }
+  #eventModal input[type="text"],
+  #eventModal input[type="number"],
+  #eventModal input[type="date"],
+  #eventModal input[type="time"],
+  #eventModal input[type="search"],
+  #eventModal select,
+  #eventModal textarea {
+    color:#111 !important;
+    background:#fff !important;
+    border:1px solid #c8cad1 !important;
+    border-radius:6px !important;
+    padding:6px 10px !important;
+  }
+  #eventModal input::placeholder { color:#888 !important; opacity:1 !important; }
+
+  /* ======================= HEROES SECTION ======================= */
+  .hero-edit-btn {
+    background:#38b464; color:#fff; border:none; padding:6px 14px;
+    border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;
+  }
+  .hero-edit-btn:hover { filter:brightness(1.08); }
+
+  .hero-toolbar {
+    display:flex; justify-content:flex-start; gap:8px;
+    margin:8px 0 12px; flex-wrap:wrap;
+  }
+  .hero-filter-group { display:flex; gap:6px; flex-wrap:wrap; }
+  .hero-filter {
+    background:rgba(255,255,255,0.06); color:#cfd4e0; border:1px solid rgba(255,255,255,0.1);
+    padding:6px 12px; border-radius:18px; font-size:12px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .hero-filter:hover { background:rgba(255,255,255,0.12); }
+  .hero-filter.active { background:#38b464; border-color:#2a8e4d; color:#fff; }
+  .fdot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  .hero-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+    gap:10px; margin-bottom:14px;
+  }
+  .hero-card {
+    position:relative;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:10px 8px 8px; text-align:center;
+    transition:transform 0.12s, box-shadow 0.12s;
+  }
+  .hero-gen-badge {
+    position:absolute; top:6px; left:6px; z-index:2;
+    color:#fff; font-size:10px; font-weight:800; letter-spacing:0.3px;
+    padding:2px 6px; border-radius:8px;
+    border:1px solid rgba(0,0,0,0.25);
+    box-shadow:0 1px 3px rgba(0,0,0,0.4);
+    text-shadow:0 1px 1px rgba(0,0,0,0.35);
+  }
+  .hero-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+  .hero-card.hero-maxed { background:linear-gradient(180deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04)); border-color:rgba(255,215,0,0.4); }
+  .hero-icon-wrap {
+    position:relative; width:68px; height:68px; margin:0 auto 6px;
+    border-radius:50%; border:3px solid; padding:2px; background:#0a0e18;
+  }
+  .hero-icon { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
+  .hero-icon-fallback {
+    background:#3d8bd6; color:#fff; font-weight:700; font-size:22px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hero-max-badge {
+    position:absolute; bottom:-4px; right:-4px;
+    background:#ffd700; color:#222; font-size:9px; font-weight:800;
+    padding:2px 5px; border-radius:8px; border:1px solid #b38f00;
+    letter-spacing:0.5px;
+  }
+  .hero-name { font-weight:600; font-size:13px; color:#eaeef6; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hero-stars { color:#ffd700; font-size:12px; letter-spacing:1px; margin-bottom:4px; }
+  /* Hero stats row — widget on the left, then all 6 skill pills.
+     flex-wrap lets the pills drop to a second line on narrow cards instead of being clipped. */
+  .hero-stats {
+    display:flex; justify-content:center; align-items:center;
+    gap:4px; font-size:11px; color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  .hero-widget {
+    background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:10px;
+    flex:0 0 auto;
+  }
+  .hero-widget b { color:#fff; }
+  .hero-skills {
+    display:flex; gap:2px; flex:0 1 auto; flex-wrap:nowrap;
+    justify-content:center;
+  }
+  .skill-cell {
+    display:inline-block; min-width:13px; padding:0 2px; text-align:center; font-weight:600;
+    background:rgba(255,255,255,0.06); border-radius:3px; color:#cfd4e0;
+  }
+  .skill-cell.skill-max { background:#38b464; color:#fff; }
+
+  /* Participation bar */
+  .participation-box {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:12px 14px; margin-bottom:14px;
+  }
+  .participation-stats {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));
+    gap:10px; margin-bottom:10px;
+  }
+  .part-stat { text-align:center; }
+  .part-stat-label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; }
+  .part-stat-value { font-size:22px; font-weight:700; color:#eaeef6; }
+  .part-stat-value.reg   { color:#3d8bd6; }
+  .part-stat-value.att   { color:#38b464; }
+  .part-stat-value.miss  { color:#e05a5a; }
+  .part-stat-value.rate  { color:#ffd700; }
+  .part-bar-wrap { height:10px; background:rgba(255,255,255,0.08); border-radius:5px; overflow:hidden; }
+  .part-bar { height:100%; background:linear-gradient(90deg,#38b464,#4fd1ff); transition:width 0.4s; }
+
+  /* Hero editor modal */
+  #heroEditor {
+    background:#fff; color:#111; border-radius:14px; width:min(1100px, 96%);
+    max-height:92vh; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+  }
+  #heroEditorHeader {
+    padding:16px 22px; background:linear-gradient(135deg,#2a8e4d,#1e5f34);
+    color:#fff; display:flex; justify-content:space-between; align-items:center;
+  }
+  #heroEditorHeader h3 { margin:0; font-weight:600; font-size:18px; }
+  #heroEditorBody { padding:18px 22px; overflow:auto; flex:1; background:#f5f6f9; }
+  #heroEditorFooter { padding:12px 22px; background:#fff; border-top:1px solid #e3e3ea; display:flex; justify-content:space-between; align-items:center; }
+  #heroEditorMsg { font-size:13px; color:#444; }
+
+  .hero-editor-gen { margin-bottom:18px; }
+  .hero-editor-gen-title {
+    font-size:12px; font-weight:700; letter-spacing:1px; color:#666;
+    text-transform:uppercase; margin-bottom:8px; padding-bottom:4px;
+    border-bottom:1px solid #ddd;
+  }
+  .hero-editor-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:10px;
+  }
+  .hero-edit-card {
+    background:#fff; border:1px solid #e3e3ea; border-radius:8px;
+    padding:10px; display:flex; flex-direction:column; gap:8px;
+    transition:box-shadow 0.12s;
+  }
+  .hero-edit-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+  .hero-edit-card.he-tracked { background:#eef8f1; border-color:#a9d9bb; }
+  .he-head {
+    display:flex; align-items:center; gap:10px; padding-left:8px;
+    border-left:4px solid #888;
+  }
+  .he-icon { width:40px; height:40px; border-radius:50%; object-fit:cover; background:#222; flex-shrink:0; }
+  .he-icon-fb { display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+  .he-name { font-size:14px; font-weight:600; color:#111; }
+  .he-sub  { font-size:11px; color:#777; }
+  .he-max, .he-clear {
+    margin-left:auto; background:#e8e9ed; color:#111; border:1px solid #c8cad1;
+    padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;
+  }
+  .he-max { background:#ffd700; border-color:#b38f00; }
+  .he-max:hover { filter:brightness(1.08); }
+  .he-clear { margin-left:4px; padding:4px 7px; }
+  .he-clear:hover { background:#f5c7c7; border-color:#d66; }
+  .he-row {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    font-size:12px; color:#444;
+  }
+  .he-row label { font-weight:600; color:#333; min-width:30px; }
+  .he-row select {
+    background:#fff; color:#111; border:1px solid #c8cad1; border-radius:4px;
+    padding:3px 4px; font-size:12px;
+  }
+  .he-skills label { min-width:24px; font-size:11px; color:#555; }
+  .he-skills select { min-width:48px; }
+  .he-cap-note {
+    font-size:11px; color:#667; font-style:italic;
+    padding:2px 8px; background:#f3f5f9; border-radius:4px;
+    border-left:3px solid #2a8e4d;
+  }
+
+/* ==================== v2: collapsible sections ==================== */
+.role-bar { flex-wrap:wrap; }
+.role-bar .spacer { flex:1 1 auto; }
+.role-bar .gen-pill {
+  padding:3px 10px; border-radius:999px; background:#0f2a46; border:1px solid #2b5d86;
+  color:var(--ice-soft); font-size:12px;
+}
+.role-bar .gen-admin { display:inline-flex; gap:6px; align-items:center; }
+.role-bar .gen-admin select { padding:3px 6px; font-size:12px; }
+
+.card-head { position:relative; cursor:pointer; user-select:none; }
+h3.card-head, .card-head h3 { display:flex; align-items:center; gap:8px; }
+.card-head.row { gap:8px; }
+.collapse-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; min-width:26px; padding:0; margin-right:6px;
+  border-radius:6px; line-height:1; font-size:14px; vertical-align:middle;
+}
+.collapse-btn .chev { display:inline-block; transition:transform .18s ease; }
+.card.collapsed .collapse-btn .chev { transform:rotate(-90deg); }
+/* Hide everything in a collapsed card except its header */
+.card.collapsed > :not(.card-head) { display:none !important; }
+.card.collapsed { padding-bottom:10px; }
+.card.collapsed > .card-head { margin-bottom:0; }
+
+/* ==================== v2: event filters ==================== */
+.evt-filters {
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  padding:8px; margin-bottom:8px; border:1px solid #d6d9e0; border-radius:8px;
+  background:#f6f7fa; color:#222; font-size:13px;
+}
+.evt-filters input, .evt-filters select {
+  padding:6px 8px; border:1px solid #c8cad1; border-radius:6px; font-size:13px;
+  background:#fff; color:#111;
+}
+.evt-filters input[type="search"] { flex:1 1 180px; min-width:160px; }
+.evt-filters label { display:inline-flex; gap:4px; align-items:center; color:#333; }
+.evt-filters button { padding:5px 10px; font-size:12px; }
+.evt-filters .small { color:#555; margin-left:auto; }
+.viewer-stat.clickable { cursor:pointer; }
+.viewer-stat.clickable:hover { box-shadow:0 0 0 2px rgba(0,0,0,.08); }
+.svs-took-lbl { display:inline-flex; gap:6px; align-items:center; cursor:pointer; }
+.svs-took-txt { font-size:12px; font-weight:700; min-width:22px; }
+
+/* ==================== v2: hero gen lock ==================== */
+.hero-card.hero-locked, .hero-edit-card.he-locked { filter:grayscale(1); opacity:.45; }
+.hero-edit-card.he-locked select, .hero-edit-card.he-locked button { cursor:not-allowed; }
+.he-gen-locked .hero-editor-gen-title { opacity:.8; }
+.he-lock-tag {
+  display:inline-block; margin-left:8px; padding:1px 8px; border-radius:999px;
+  background:#3a3f4f; color:#e0e4ee; font-size:11px; font-weight:700; letter-spacing:.3px;
+}
+.he-gen-note {
+  margin:0 0 10px; padding:8px 10px; border-radius:6px;
+  background:rgba(79,209,255,.08); border:1px solid rgba(79,209,255,.3); font-size:13px;
+}
+
+/* ==================== v2: player icon picker ==================== */
+.avatar-picker {
+  margin:6px 0 12px; padding:10px; border:1px solid var(--border); border-radius:10px;
+  background:rgba(0,0,0,.35); max-height:420px; overflow:auto;
+}
+.avatar-picker[hidden] { display:none; }
+.ap-group { margin-bottom:10px; }
+.ap-title { font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--ice-soft); margin:4px 0 6px; text-transform:uppercase; }
+.ap-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:6px; }
+.ap-item {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:5px 3px; border-radius:8px; border:2px solid transparent;
+  background:rgba(255,255,255,.05); color:var(--text); font-size:11px; cursor:pointer;
+}
+.ap-item img { width:48px; height:48px; border-radius:50%; object-fit:cover; background:#0d1f3a; }
+.ap-item span { max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ap-item:hover:not([disabled]) { border-color:var(--ice); }
+.ap-item.selected { border-color:#ffd24a; background:rgba(255,210,74,.12); }
+.ap-item.locked { filter:grayscale(1); opacity:.4; cursor:not-allowed; }
+#avatarPickerGrid { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:flex-start; }
+#avatarPickerGrid .ap-grid { grid-template-columns:repeat(3, 76px); }
+#avatarPickerGrid .ap-group:has(.ap-item:nth-child(4)) .ap-grid { grid-template-columns:repeat(auto-fill, 76px); }
+#avatarPickerGrid .ap-group:has(.ap-item:nth-child(4)) { flex:1 1 100%; }
