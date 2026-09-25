@@ -14,16 +14,16 @@
    WHEN YOU DEPLOY CHANGES: bump CACHE_VERSION below (and the ?v= numbers
    in index.html). Old caches are deleted automatically on activate.
    ===================================================================== */
-const CACHE_VERSION = "2026-09-25a";
+const CACHE_VERSION = "2026-09-25b";
 const SHELL_CACHE = `tbd-shell-${CACHE_VERSION}`;
 const IMG_CACHE   = `tbd-img-${CACHE_VERSION}`;
 const KEEP = new Set([SHELL_CACHE, IMG_CACHE, "tbd-api-v1"]);
 
 const SHELL = [
   "./",
-  "./assets/app.css?v=20260925",
-  "./assets/heroes.js?v=20260925",
-  "./assets/app.js?v=20260925",
+  "./assets/app.css?v=20260925b",
+  "./assets/heroes.js?v=20260925b",
+  "./assets/app.js?v=20260925b",
   "./images/wos-banner.webp"
 ];
 

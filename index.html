@@ -11,9 +11,9 @@
   <link rel="dns-prefetch" href="https://script.googleusercontent.com" />
   <!-- Critical assets: fetched at high priority, in parallel -->
   <link rel="preload" href="images/wos-banner.webp" as="image" type="image/webp" fetchpriority="high" />
-  <link rel="preload" href="assets/heroes.js?v=20260925" as="script" />
-  <link rel="preload" href="assets/app.js?v=20260925" as="script" />
-  <link rel="stylesheet" href="assets/app.css?v=20260925" />
+  <link rel="preload" href="assets/heroes.js?v=20260925b" as="script" />
+  <link rel="preload" href="assets/app.js?v=20260925b" as="script" />
+  <link rel="stylesheet" href="assets/app.css?v=20260925b" />
 </head>
 <body>
 
@@ -76,6 +76,7 @@
     <h3 style="margin:0;">Events</h3>
     <div>
       <button onclick="loadEvents()">Refresh</button>
+      <button onclick="openRegularsModal()" data-requires="ADMIN" title="Set who always joins Canyon / Foundry at 1900 or 0200 UTC">&#9733; Regulars</button>
       <button class="primary" onclick="openNewEventModal()" data-requires="ADMIN">+ Log New Event</button>
     </div>
   </div>
@@ -353,8 +354,8 @@
 </div>
 
 <!-- defer = download in parallel with HTML parsing, run in order after parsing -->
-<script src="assets/heroes.js?v=20260925" defer></script>
-<script src="assets/app.js?v=20260925" defer></script>
+<script src="assets/heroes.js?v=20260925b" defer></script>
+<script src="assets/app.js?v=20260925b" defer></script>
 
 </body>
 </html>

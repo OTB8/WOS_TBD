@@ -554,7 +554,7 @@
   const API_CACHE_MAX_AGE = 60 * 1000;            // "fresh" window
   const API_CACHE_KEEP    = 7 * 24 * 3600 * 1000; // never serve older than this
   const CACHEABLE_VIEWS = new Set(["", "events_list", "svs_leaderboard", "event_detail",
-    "profile", "player_heroes", "gift_codes", "archive", "settings", "events"]);
+    "profile", "player_heroes", "gift_codes", "archive", "settings", "events", "regulars"]);
   const _inflight = new Map();
   const hasCacheApi = typeof caches !== "undefined" && window.isSecureContext;
 
@@ -1369,6 +1369,15 @@
     return s && s.role === 'PLAYER' ? normPid(s.playerPid) : '';
   }
 
+  // "200" / "19:00" / "0200 utc" -> "0200 UTC" / "1900 UTC"
+  function normUtc_(v)
+  {
+    const raw = String(v ?? "").trim().toUpperCase().replace(/UTC/g, "").replace(/[:\s]/g, "");
+    if (!raw) return "";
+    if (!/^\d{1,4}$/.test(raw)) return String(v).trim().toUpperCase();
+    return raw.padStart(4, "0") + " UTC";
+  }
+
   function isValidUtcTime(s)
   {
     return /^([01]\d|2[0-3])([0-5]\d)\sUTC$/.test(String(s || '').trim());
@@ -1376,6 +1385,7 @@
 
   function validateEventTimes(type, payload)
   {
+    ["Legion1Time","Legion2Time","EventTime"].forEach(k => { if (payload[k] !== undefined) payload[k] = normUtc_(payload[k]); });
     if (type === 'Canyon' || type === 'Foundry') 
     {
       if (!isValidUtcTime(payload.Legion1Time)) 
@@ -2500,7 +2510,7 @@
       const typeBadge = `<span style="display:inline-block; padding:3px 10px; border-radius:10px; background:${theme.grad}; color:#fff; font-size:12px; font-weight:600;">${esc(ev.Type)}</span>`;
       let timeCell = esc(ev.EventTime || "");
       if (ev.Type === "Canyon" || ev.Type === "Foundry"){
-        const l1 = esc(ev.Legion1Time || ""), l2 = esc(ev.Legion2Time || "");
+        const l1 = esc(normUtc_(ev.Legion1Time)), l2 = esc(normUtc_(ev.Legion2Time));
         timeCell = `<div style="font-size:12px; line-height:1.4;"><b>L1:</b> ${l1 || "\u2014"}<br><b>L2:</b> ${l2 || "\u2014"}</div>`;
       }
       // SVS spans a week, so show the prep window and the battle day.
@@ -2733,13 +2743,21 @@
           <div class="evt-grid2">
             <div class="field">
               <label>Legion 1 Time</label>
-              <input type="text" id="newLegion1Time" placeholder="e.g. 19:00 UTC" />
+              <select id="newLegion1Time" onchange="syncLegionSlots_('1')">
+                <option value="1900 UTC">1900 UTC</option>
+                <option value="0200 UTC">0200 UTC</option>
+              </select>
             </div>
             <div class="field">
               <label>Legion 2 Time</label>
-              <input type="text" id="newLegion2Time" placeholder="e.g. 21:00 UTC" />
+              <select id="newLegion2Time" onchange="syncLegionSlots_('2')">
+                <option value="0200 UTC">0200 UTC</option>
+                <option value="1900 UTC">1900 UTC</option>
+              </select>
             </div>
           </div>
+          <div class="evt-hint" id="newSlotHint">Times rotate each event &mdash; the last one is flipped for you.</div>
+          <div class="evt-hint" id="newRegularsHint"></div>
         </div>
 
         <div class="field">
@@ -2753,6 +2771,48 @@
     openModal("Log New Event", body, footer);
   }
 
+  // Legion 1 / Legion 2 always take the two different slots.
+  function syncLegionSlots_(changed){
+    const a = document.getElementById("newLegion1Time"), b = document.getElementById("newLegion2Time");
+    if (!a || !b) return;
+    const other = v => v === "1900 UTC" ? "0200 UTC" : "1900 UTC";
+    if (changed === "1") b.value = other(a.value); else a.value = other(b.value);
+    updateNewEventRegularsHint_();
+  }
+
+  // Default the slots to the opposite of the last event of this type.
+  function defaultLegionSlots_(type){
+    const a = document.getElementById("newLegion1Time");
+    if (!a) return;
+    const last = (EVENTS_CACHE || [])
+      .filter(ev => ev.Type === type && normUtc_(ev.Legion1Time))
+      .sort((x, y) => new Date(y.EventDate) - new Date(x.EventDate))[0];
+    const lastL1 = last ? normUtc_(last.Legion1Time) : "";
+    a.value = lastL1 === "1900 UTC" ? "0200 UTC" : "1900 UTC";
+    syncLegionSlots_("1");
+    const hint = document.getElementById("newSlotHint");
+    if (hint) hint.innerHTML = last
+      ? `Last ${esc(type)} (${esc(fmtDate(last.EventDate))}) had Legion 1 at <b>${esc(lastL1)}</b>, so it is flipped for you. Change it if needed.`
+      : "Pick which legion runs at each time.";
+  }
+
+  let _regularsForForm = null;
+  async function updateNewEventRegularsHint_(){
+    const el = document.getElementById("newRegularsHint");
+    const type = document.getElementById("newEventType")?.value;
+    if (!el || (type !== "Canyon" && type !== "Foundry")) { if (el) el.textContent = ""; return; }
+    if (!_regularsForForm){
+      const r = await apiGet({ view: "regulars" }, { cache: "network", acceptAge: 60000 });
+      _regularsForForm = (r && r.ok) ? (r.regulars || []) : [];
+    }
+    const l1 = document.getElementById("newLegion1Time")?.value, l2 = document.getElementById("newLegion2Time")?.value;
+    const regs = _regularsForForm.filter(x => x[type]);
+    const n1 = regs.filter(x => x[type] === l1).length, n2 = regs.filter(x => x[type] === l2).length;
+    el.innerHTML = regs.length
+      ? `&#9733; <b>${n1 + n2}</b> ${esc(type)} regular(s) will be auto-registered: <b>${n1}</b> into Legion 1 (${esc(l1)}), <b>${n2}</b> into Legion 2 (${esc(l2)}).`
+      : `No ${esc(type)} regulars set yet &mdash; use <b>&#9733; Regulars</b> on the Events card.`;
+  }
+
   // Called by the type chips
   function selectEventType(t){
     document.getElementById("newEventType").value = t;
@@ -2761,6 +2821,7 @@
     const isSplit = (t === "Canyon" || t === "Foundry");
     document.getElementById("splitTimeField").style.display  = isSplit ? "" : "none";
     document.getElementById("singleTimeField").style.display = isSplit ? "none" : "";
+    if (isSplit){ _regularsForForm = null; defaultLegionSlots_(t); }
     // SVS uses a prep week + battle day instead of a single event date.
     const isSvs = (t === "SVS");
     document.getElementById("svsDateField").style.display    = isSvs ? "" : "none";
@@ -2808,7 +2869,12 @@
     if (!r.ok) return setModalMsg('Error: ' + r.error);
 
     await loadEvents();
-    openEventEditor(r.EventID);
+    await openEventEditor(r.EventID);
+    if (type === 'Canyon' || type === 'Foundry'){
+      setModalMsg(r.autoRegistered
+        ? `Event created. ${r.autoRegistered} regular(s) were auto-registered \u2014 untick anyone who did not sign up, then Save Registrations.`
+        : 'Event created. No regulars matched these times.');
+    }
   }
 
   // ---- Open editor for an existing event ----
@@ -3056,6 +3122,13 @@
             ${o.unregistered ? "" : '<option value="unmarked">Not marked</option>'}
           </select>
         </label>` : ""}
+        ${o.regulars ? `<label>Regulars
+          <select id="regF_regular" onchange="applyRegFilters()">
+            <option value="">All</option>
+            <option value="1">&#9733; Regulars only</option>
+            <option value="0">Non-regulars</option>
+          </select>
+        </label>` : ""}
         <button type="button" onclick="clearRegFilters()">Clear</button>
         <span id="regF_count" class="small"></span>
       </div>`;
@@ -3077,6 +3150,7 @@
     const q   = (document.getElementById("regF_q")?.value || "").trim().toLowerCase();
     const leg = document.getElementById("regF_legion")?.value || "";
     const att = document.getElementById("regF_att")?.value || "";
+    const regular = document.getElementById("regF_regular")?.value || "";
     let shown = 0, total = 0;
     table.querySelectorAll("tbody tr").forEach(tr => {
       total++;
@@ -3089,6 +3163,7 @@
       }
       // Attendance only means something for registered players.
       if (ok && att) ok = !!st.legion && st.att === att;
+      if (ok && regular) ok = (tr.dataset.regular || "0") === regular;
       tr.style.display = ok ? "" : "none";
       if (ok) shown++;
     });
@@ -3097,7 +3172,7 @@
   }
 
   function clearRegFilters(){
-    ["regF_q","regF_legion","regF_att"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    ["regF_q","regF_legion","regF_att","regF_regular"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
     applyRegFilters();
   }
 
@@ -3250,16 +3325,29 @@
     const pastEvent = d && !isNaN(d.getTime()) && d.toDateString() !== now.toDateString() && d < now;
     const showAttendance = pastEvent || String(ev.Status || "") === "Complete";
 
+    // Regulars: stored by time slot, mapped onto whichever legion runs at that time.
+    const evL1 = normUtc_(ev.Legion1Time), evL2 = normUtc_(ev.Legion2Time);
+    const regSlot = {};
+    (detail.regulars || []).forEach(x => { const slot = normUtc_(x[ev.Type]); if (slot) regSlot[normPid(x.PID)] = slot; });
+    const slotLegion = slot => slot && slot === evL1 ? "1" : (slot && slot === evL2 ? "2" : "");
+    const regCount = roster.filter(m => regSlot[normPid(m.PID)]).length;
+
     const rows = roster.slice().sort((a,b) => String(a.Name||"").localeCompare(String(b.Name||""))).map(m => {
       const ex = existing[normPid(m.PID)] || {};
       const inL1 = ex.Legion === "1";
       const inL2 = ex.Legion === "2";
       const att = ex.AttendedRaw === "" ? "yes" : (ex.Attended ? "yes" : "no");
+      const slot = regSlot[normPid(m.PID)] || "";
+      const slotLeg = slotLegion(slot);
+      const regCell = slot
+        ? `<span class="reg-badge" title="Regular for ${esc(ev.Type)} at ${esc(slot)}">&#9733; ${esc(slot.replace(" UTC",""))}${slotLeg ? " \u2192 L" + slotLeg : ""}</span>`
+        : '<span style="opacity:.35;">\u2014</span>';
       return `
-        <tr data-pid="${esc(m.PID)}">
+        <tr data-pid="${esc(m.PID)}" data-regular="${slot ? "1" : "0"}" data-regleg="${slotLeg}">
           <td style="padding:4px;">${esc(m.Name || "")}</td>
           <td style="padding:4px; opacity:.7;">${esc(m.PID)}</td>
-          <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value=""  ${!inL1 && !inL2 ? "checked" : ""}/></td>
+          <td style="padding:4px; text-align:center;">${regCell}</td>
+          <td style="padding:4px; text-align:center;"><input type="checkbox" class="regChk" title="Registered for this event \u2014 untick to remove" ${inL1 || inL2 ? "checked" : ""}/></td>
           <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value="1" ${inL1 ? "checked" : ""}/></td>
           <td style="padding:4px; text-align:center;"><input type="radio" name="leg-${esc(m.PID)}" value="2" ${inL2 ? "checked" : ""}/></td>
           ${showAttendance ? `<td style="padding:4px; text-align:center;"><input type="checkbox" class="attChk" ${att === "yes" ? "checked" : ""}/></td>` : ""}
@@ -3267,8 +3355,8 @@
     }).join("");
 
     const theme = EVENT_THEMES[ev.Type] || EVENT_THEMES._default;
-    const l1Time = esc(ev.Legion1Time || ev.EventTime || "");
-    const l2Time = esc(ev.Legion2Time || ev.EventTime || "");
+    const l1Time = esc(normUtc_(ev.Legion1Time || ev.EventTime));
+    const l2Time = esc(normUtc_(ev.Legion2Time || ev.EventTime));
     const body = `
       <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
         <div style="flex:1; min-width:180px; padding:10px 12px; border-radius:8px; background:#f7f7fa; border:1px solid #eceef2;">
@@ -3285,19 +3373,25 @@
         </div>
       </div>
       <div class="small" style="margin-bottom:8px; color:#555;">
-        Pick <b>Legion 1</b> or <b>Legion 2</b> for each registered player. Leave “—” for players not registered.
+        Tick <b>Registered</b> and pick <b>Legion 1</b> or <b>Legion 2</b>. Untick <b>Registered</b> to remove someone.
+        <b>&#9733; Regulars</b> are added automatically when the event is created, into the legion running at their time.
         ${showAttendance ? '<br>Attendance defaults to <b>Yes</b> — uncheck no-shows.' : ""}
       </div>
-      ${regFilterBarHtml_({ attendance: showAttendance, unregistered: true })}
+      ${regFilterBarHtml_({ attendance: showAttendance, unregistered: true, regulars: true })}
+      <div class="row" style="gap:8px; margin-bottom:8px; align-items:center;">
+        <button type="button" class="subtle" onclick="regAddMissingRegulars()" title="Register every regular who is not on this event yet">&#9733; Add missing regulars (${regCount})</button>
+        <span id="regSummary" class="small" style="color:#555;"></span>
+      </div>
       <div style="max-height:50vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
       <table id="regTable" style="width:100%; border-collapse:collapse; font-size:14px;">
         <thead style="background:#f2f2f2; position:sticky; top:0;">
           <tr>
             <th style="padding:8px; text-align:left;">Name</th>
             <th style="padding:8px; text-align:left;">PID</th>
-            <th style="padding:8px;">—</th>
-            <th style="padding:8px;">Legion 1</th>
-            <th style="padding:8px;">Legion 2</th>
+            <th style="padding:8px;" title="Regular time slot for this event type">Regular</th>
+            <th style="padding:8px;">Registered</th>
+            <th style="padding:8px;">Legion 1<br><span style="font-weight:400; font-size:11px;">${l1Time || ""}</span></th>
+            <th style="padding:8px;">Legion 2<br><span style="font-weight:400; font-size:11px;">${l2Time || ""}</span></th>
             ${showAttendance ? '<th style="padding:8px;">Attended</th>' : ""}
           </tr>
         </thead>
@@ -3312,7 +3406,190 @@
       ${showAttendance ? '<button class="primary" onclick="saveAttendance()">Save Attendance</button>' : ""}`;
 
     openModal(`${ev.Type} — ${fmtDate(ev.EventDate)}`, body, footer, ev.Type);
+    wireRegEditor_();
     applyRegFilters();
+  }
+
+  // ======================================================================
+  // REGULARS MANAGER (Admin / Master)
+  // A regular always plays Canyon and/or Foundry at the same UTC time.
+  // Legion times rotate, so we store the TIME, and every new event puts the
+  // regular into whichever legion runs at that time.
+  // ======================================================================
+  async function openRegularsModal(){
+    if (!Array.isArray(sheetDefaultOrder) || !sheetDefaultOrder.length){
+      try { await loadAll(); } catch (e) {}
+    }
+    setModalMsg("");
+    openModal("\u2605 Canyon & Foundry Regulars", '<div class="small">Loading regulars\u2026</div>',
+      `<button onclick="closeEventModal()">Close</button>`, "Canyon");
+    const r = await apiGet({ view: "regulars" }, { cache: "network" });
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "Could not load regulars")); return; }
+    const byPid = {};
+    (r.regulars || []).forEach(x => { byPid[normPid(x.PID)] = x; });
+
+    const full = Array.isArray(sheetDefaultOrder) ? sheetDefaultOrder : [];
+    const roster = full.filter(m => allianceGroup_(m) === "TBD" || byPid[normPid(m.PID)])
+      .sort((a, b) => String(a.Name || "").localeCompare(String(b.Name || "")));
+
+    const sel = (cls, val) => `
+      <select class="${cls}">
+        <option value="" ${!val ? "selected" : ""}>\u2014 Not regular</option>
+        <option value="1900 UTC" ${val === "1900 UTC" ? "selected" : ""}>1900 UTC</option>
+        <option value="0200 UTC" ${val === "0200 UTC" ? "selected" : ""}>0200 UTC</option>
+      </select>`;
+    const rows = roster.map(m => {
+      const x = byPid[normPid(m.PID)] || {};
+      return `<tr data-pid="${esc(m.PID)}" data-name="${esc(m.Name || "")}">
+        <td style="padding:4px 8px;">${esc(m.Name || "")}</td>
+        <td style="padding:4px 8px; opacity:.7;">${esc(m.PID)}</td>
+        <td style="padding:4px 8px; text-align:center;">${sel("rgCanyon", normUtc_(x.Canyon))}</td>
+        <td style="padding:4px 8px; text-align:center;">${sel("rgFoundry", normUtc_(x.Foundry))}</td>
+      </tr>`;
+    }).join("");
+
+    const body = `
+      <div class="small" style="margin-bottom:8px; color:#555;">
+        Pick the time each regular always plays. When a new Canyon or Foundry is created they are
+        <b>registered automatically</b> into whichever legion runs at that time &mdash; you only confirm attendance,
+        or untick anyone who did not sign up.
+      </div>
+      <div class="evt-filters">
+        <input id="rgF_q" type="search" placeholder="Name or PID\u2026" oninput="filterRegularsTable()" />
+        <label>Show
+          <select id="rgF_show" onchange="filterRegularsTable()">
+            <option value="">Everyone</option>
+            <option value="any">Any regular</option>
+            <option value="c1900">Canyon 1900</option>
+            <option value="c0200">Canyon 0200</option>
+            <option value="f1900">Foundry 1900</option>
+            <option value="f0200">Foundry 0200</option>
+            <option value="none">Not a regular</option>
+          </select>
+        </label>
+        <button type="button" onclick="regularsCopyCanyonToFoundry()" title="For the players shown, set Foundry to the same time as Canyon">Copy Canyon \u2192 Foundry (shown)</button>
+        <span id="rgF_count" class="small"></span>
+      </div>
+      <div style="max-height:55vh; overflow:auto; border:1px solid #e3e3ea; border-radius:8px;">
+        <table id="regularsTable" style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead style="background:#f2f2f2; position:sticky; top:0;">
+            <tr><th style="padding:8px; text-align:left;">Name</th><th style="padding:8px; text-align:left;">PID</th>
+                <th style="padding:8px;">Canyon</th><th style="padding:8px;">Foundry</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    const footer = `
+      <button onclick="closeEventModal()">Close</button>
+      <button class="primary" onclick="saveRegulars()">Save Regulars</button>`;
+    openModal("\u2605 Canyon & Foundry Regulars", body, footer, "Canyon");
+    document.querySelectorAll("#regularsTable select").forEach(s => s.addEventListener("change", filterRegularsTable));
+    filterRegularsTable();
+  }
+
+  function filterRegularsTable(){
+    const q = (document.getElementById("rgF_q")?.value || "").trim().toLowerCase();
+    const show = document.getElementById("rgF_show")?.value || "";
+    let shown = 0, total = 0, regs = 0;
+    document.querySelectorAll("#regularsTable tbody tr").forEach(tr => {
+      total++;
+      const c = tr.querySelector(".rgCanyon").value, f = tr.querySelector(".rgFoundry").value;
+      if (c || f) regs++;
+      let ok = !q || tr.innerText.toLowerCase().includes(q);
+      if (ok && show){
+        if (show === "any") ok = !!(c || f);
+        else if (show === "none") ok = !c && !f;
+        else {
+          const want = show.slice(1) + " UTC";
+          ok = (show[0] === "c" ? c : f) === want;
+        }
+      }
+      tr.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    });
+    const el = document.getElementById("rgF_count");
+    if (el) el.textContent = `${regs} regular(s) \u00b7 showing ${shown} of ${total}`;
+  }
+
+  function regularsCopyCanyonToFoundry(){
+    let n = 0;
+    document.querySelectorAll("#regularsTable tbody tr").forEach(tr => {
+      if (tr.style.display === "none") return;
+      const c = tr.querySelector(".rgCanyon").value, f = tr.querySelector(".rgFoundry");
+      if (c && f.value !== c){ f.value = c; n++; }
+    });
+    filterRegularsTable();
+    setModalMsg(n ? `Copied ${n} Canyon time(s) to Foundry. Click Save Regulars to keep it.` : "Nothing to copy.");
+  }
+
+  async function saveRegulars(){
+    if (!checkEventPassword()) return;
+    const list = [];
+    document.querySelectorAll("#regularsTable tbody tr").forEach(tr => {
+      const c = tr.querySelector(".rgCanyon").value, f = tr.querySelector(".rgFoundry").value;
+      if (c || f) list.push({ PID: tr.dataset.pid, Name: tr.dataset.name, Canyon: c, Foundry: f });
+    });
+    setModalMsg(`Saving ${list.length} regular(s)\u2026`);
+    const r = await apiPost("regulars_save", { Regulars: list });
+    if (!r.ok){ setModalMsg("Error: " + (r.error || "")); return; }
+    _regularsForForm = null;
+    setModalMsg(`Saved ${r.count} regular(s). They will be auto-registered on the next Canyon / Foundry you create.`);
+  }
+
+  window.openRegularsModal = openRegularsModal;
+  window.filterRegularsTable = filterRegularsTable;
+  window.regularsCopyCanyonToFoundry = regularsCopyCanyonToFoundry;
+  window.saveRegulars = saveRegulars;
+  window.regAddMissingRegulars = regAddMissingRegulars;
+  window.syncLegionSlots_ = syncLegionSlots_;
+
+  // Registered checkbox <-> legion radios stay in sync.
+  function wireRegEditor_(){
+    document.querySelectorAll("#regTable tbody tr").forEach(tr => {
+      const chk = tr.querySelector(".regChk");
+      const radios = tr.querySelectorAll('input[type="radio"]');
+      if (!chk) return;
+      chk.addEventListener("change", () => {
+        if (chk.checked){
+          if (!tr.querySelector('input[type="radio"]:checked')){
+            const leg = tr.dataset.regleg || "1";
+            const r = tr.querySelector(`input[type="radio"][value="${leg}"]`);
+            if (r) r.checked = true;
+          }
+        } else {
+          radios.forEach(r => { r.checked = false; });
+        }
+        regUpdateSummary_();
+      });
+      radios.forEach(r => r.addEventListener("change", () => { chk.checked = true; regUpdateSummary_(); }));
+      const att = tr.querySelector(".attChk");
+      if (att) att.addEventListener("change", regUpdateSummary_);
+    });
+    regUpdateSummary_();
+  }
+
+  function regUpdateSummary_(){
+    const box = document.getElementById("regSummary");
+    if (!box) return;
+    const rows = Array.from(document.querySelectorAll("#regTable tbody tr"));
+    const reg = rows.filter(tr => tr.querySelector('input[type="radio"]:checked'));
+    const l1 = reg.filter(tr => tr.querySelector('input[type="radio"]:checked').value === "1").length;
+    const regs = reg.filter(tr => tr.dataset.regular === "1").length;
+    const noShow = reg.filter(tr => tr.querySelector(".attChk") && !tr.querySelector(".attChk").checked).length;
+    box.textContent = `${reg.length} registered (L1 ${l1} \u00b7 L2 ${reg.length - l1}) \u00b7 ${regs} regular(s)` + (document.querySelector("#regTable .attChk") ? ` \u00b7 ${noShow} no-show(s)` : "");
+  }
+
+  function regAddMissingRegulars(){
+    let n = 0;
+    document.querySelectorAll('#regTable tbody tr[data-regular="1"]').forEach(tr => {
+      if (tr.querySelector('input[type="radio"]:checked')) return;
+      const leg = tr.dataset.regleg || "1";
+      const r = tr.querySelector(`input[type="radio"][value="${leg}"]`);
+      if (r){ r.checked = true; tr.querySelector(".regChk").checked = true; n++; }
+    });
+    regUpdateSummary_();
+    applyRegFilters();
+    setModalMsg(n ? `Added ${n} regular(s). Click Save Registrations to keep it.` : "Every regular is already registered.");
   }
 
   function filterRegTable(){ applyRegFilters(); }
